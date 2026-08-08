@@ -6,6 +6,9 @@ import {
   watchProducts,
   watchOrders,
   watchPurchases,
+  watchBundles,
+  watchDiscountRules,
+  updateBundlesCache,
 } from './firebase'
 import { IconPlus, IconHome, IconOrders, IconProducts, IconWarehouse } from './components/icons'
 import Dashboard from './pages/Dashboard'
@@ -40,6 +43,8 @@ export default function App() {
   const [products, setProducts] = useState(null)
   const [orders, setOrders] = useState(null)
   const [purchases, setPurchases] = useState(null)
+  const [bundles, setBundles] = useState(null)
+  const [discountRules, setDiscountRules] = useState(null)
   const [gateOk, setGateOk] = useState(() => localStorage.getItem('gate_ok') === '1')
 
   useEffect(() => {
@@ -57,10 +62,14 @@ export default function App() {
     const unsubP = watchProducts(setProducts)
     const unsubO = watchOrders(setOrders)
     const unsubPr = watchPurchases(setPurchases)
+    const unsubB = watchBundles((b) => { setBundles(b); updateBundlesCache(b) })
+    const unsubDR = watchDiscountRules(setDiscountRules)
     return () => {
       unsubP()
       unsubO()
       unsubPr()
+      unsubB()
+      unsubDR()
     }
   }, [authed])
 
@@ -92,7 +101,7 @@ export default function App() {
     )
   }
 
-  const loading = !products || !orders || !purchases
+  const loading = !products || !orders || !purchases || !bundles
 
   const renderPage = () => {
     if (loading) {
@@ -123,6 +132,8 @@ export default function App() {
         return (
           <NewOrder
             products={products}
+            bundles={bundles}
+            discountRules={discountRules}
             orders={orders}
             editOrder={route.orderId ? orders.find((o) => o.id === route.orderId) : null}
             onDone={(id) => navigate({ name: 'order', id })}
@@ -130,11 +141,30 @@ export default function App() {
           />
         )
       case 'products':
-        return <Products products={products} />
+        return <Products products={products} bundles={bundles} discountRules={discountRules} />
       case 'warehouse':
         return <Warehouse products={products} purchases={purchases} />
       default:
-        return <Dashboard orders={orders} products={products} onOpen={openDashboard} onLock={lock} />
+        return (
+          <>
+            <header className="dashboard-header">
+              <div className="dashboard-header-left">
+                <div className="avatar-circle">פ</div>
+                <div>
+                  <div className="topbar-title">החנות שלי</div>
+                  <div className="topbar-sub">פירות וירקות</div>
+                </div>
+              </div>
+              <button className="topbar-icon-btn" title="חיפוש">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </button>
+            </header>
+            <Dashboard orders={orders} products={products} onOpen={openDashboard} onLock={lock} />
+          </>
+        )
     }
   }
 
@@ -153,8 +183,11 @@ export default function App() {
             <div className="topbar-title">{title}</div>
             {sub && <div className="topbar-sub">{sub}</div>}
           </div>
-          <button className="btn btn-outline btn-sm" onClick={lock} title="התנתקות">
-            🚪 התנתק
+          <button className="topbar-icon-btn" onClick={lock} title="התנתקות">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
           </button>
         </header>
       )}

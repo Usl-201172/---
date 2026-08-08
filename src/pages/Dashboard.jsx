@@ -59,29 +59,40 @@ export default function Dashboard({ orders, products, onOpen, onLock }) {
           </div>
           <button className="hero-lock" onClick={onLock} title="התנתקות">🚪</button>
         </div>
-        <div className="hero-revenue-label">הכנסות היום</div>
-        <div className="hero-revenue">{fmtMoney(todayRevenue)}</div>
-        <div className="hero-chips">
-          <div className="hero-chip">
-            <span className="hero-chip-num">{todayPaidOrders.length}</span>
-            <span className="hero-chip-label">שולמו היום</span>
-          </div>
-          <div className="hero-chip">
-            <span className="hero-chip-num">{unpaidToday.length}</span>
-            <span className="hero-chip-label">ממתינות לתשלום</span>
-          </div>
-        </div>
       </section>
 
+      <div className="stats-grid rise rise-1">
+        <div className="stat-card primary">
+          <div className="stat-card-label">הכנסות היום</div>
+          <div className="stat-card-value">{fmtMoney(todayRevenue)}</div>
+          <div className="stat-card-sub">today</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-label">שולמו</div>
+          <div className="stat-card-value">{todayPaidOrders.length}</div>
+          <div className="stat-card-sub">הזמנות</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-label">ממתינות</div>
+          <div className="stat-card-value">{unpaidToday.length}</div>
+          <div className="stat-card-sub">ללא תשלום</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-label">מלאי נמוך</div>
+          <div className="stat-card-value">{lowStock.length}</div>
+          <div className="stat-card-sub">מוצרים</div>
+        </div>
+      </div>
+
       {lowStock.length > 0 && (
-        <div className="card rise rise-1" style={{ background: 'var(--accent-softer)', borderColor: 'rgba(245,158,11,0.2)' }}>
-          <div className="card-header" style={{ marginBottom: 6 }}>
-            <div className="card-title" style={{ color: '#b45309' }}>⚠️ מלאי נמוך</div>
+        <div className="card rise rise-2">
+          <div className="card-header">
+            <div className="card-title">⚠️ מלאי נמוך</div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {lowStock.map((p) => (
               <span key={p.id} className="badge badge-amber">
-                {p.icon} {p.name} · {p.stock} יח
+                {p.name} · {p.stock} ק"ג
               </span>
             ))}
           </div>

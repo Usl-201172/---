@@ -6,23 +6,44 @@ import { IconPlus, IconX } from '../components/icons'
 let keyCounter = 0
 const nextKey = () => `item-${Date.now()}-${keyCounter++}`
 
-function newLine(product) {
-  return {
-    key: nextKey(),
-    productId: product.id,
-    name: product.name,
-    qty: 1,
-    unitPrice: product.price ?? 0,
-    tracksStock: product.trackStock,
-    isCustom: false,
+function getActiveDiscounts(items, discountRules) {
+  if (!discountRules?.length) return {}
+  const triggered = {}
+  for (const rule of discountRules) {
+    if (rule.active === false) continue
+    const triggerTotal = items
+      .filter((it) => it.productId === rule.triggerProductId)
+      .reduce((sum, it) => sum + (Number(it.qty) || 0), 0)
+    if (triggerTotal >= (rule.minTriggerQty || 1)) {
+      triggered[rule.targetProductId] = rule.targetPrice
+    }
   }
+  return triggered
 }
 
-function ProductPicker({ products, onPick, onClose }) {
+function applyDiscounts(items, discountRules) {
+  const discounts = getActiveDiscounts(items, discountRules)
+  return items.map((it) => {
+    if (it.productId && discounts[it.productId] !== undefined) {
+      if (it.discounted) return it
+      return { ...it, unitPrice: discounts[it.productId], discounted: true }
+    }
+    if (it.discounted) return { ...it, discounted: false }
+    return it
+  })
+}
+
+function ProductPicker({ products, bundles, onPickProduct, onPickBundle, onClose }) {
   const [q, setQ] = useState('')
-  const filtered = products.filter(
-    (p) => p.active && (!q || p.name.includes(q) || p.category.includes(q)),
+  const [tab, setTab] = useState('products')
+  const filteredProducts = products.filter(
+    (p) => p.active && (!q || p.name.includes(q)),
   )
+  const filteredBundles = (bundles || []).filter(
+    (b) => b.active !== false && (!q || b.name.includes(q)),
+  )
+  const items = tab === 'products' ? filteredProducts : filteredBundles
+  const pick = tab === 'products' ? onPickProduct : onPickBundle
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -30,25 +51,33 @@ function ProductPicker({ products, onPick, onClose }) {
         <div className="modal-grabber" />
         <div className="modal-title">בחירת מוצרים</div>
         <div className="field">
-          <input className="input" placeholder="🔍 חיפוש מוצר..." value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+          <input className="input" placeholder="🔍 חיפוש..." value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
         </div>
-        {filtered.length === 0 ? (
+        <div className="seg" style={{ margin: '0 0 12px' }}>
+          <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>מוצרים</button>
+          <button className={tab === 'bundles' ? 'active' : ''} onClick={() => setTab('bundles')}>באנדלים</button>
+        </div>
+        {items.length === 0 ? (
           <div className="empty" style={{ padding: 20 }}>
-            <div className="empty-sub">לא נמצאו מוצרים. הוסף אותם בדף "מוצרים".</div>
+            <div className="empty-sub">{tab === 'products' ? 'לא נמצאו מוצרים' : 'לא נמצאו באנדלים'}</div>
           </div>
         ) : (
           <div className="list" style={{ margin: 0 }}>
-            {filtered.map((p) => (
-              <div className="list-row" key={p.id} onClick={() => onPick(p)}>
+            {items.map((item) => (
+              <div className="list-row" key={item.id} onClick={() => pick(item)}>
                 <div className="list-main">
-                  <div className="list-title">{p.name}</div>
+                  <div className="list-title">
+                    {item.name}
+                    {tab === 'bundles' && <span className="badge badge-blue">באנדל</span>}
+                  </div>
                   <div className="list-sub">
-                    {fmtMoney(p.price)} ליחידה
-                    {p.unitWeight ? ` · ${p.unitWeight} ק"ג` : ''}
-                    {p.trackStock ? ` · מלאי: ${p.stock}` : ''}
+                    {item.tiers?.map((t, i) => (
+                      <span key={i}>{t.qty} × {fmtMoney(t.price)}{i < item.tiers.length - 1 ? ' · ' : ''}</span>
+                    ))}
+                    {!item.tiers?.length && item.price && fmtMoney(item.price)}
                   </div>
                 </div>
-                <div className="list-price">{fmtMoney(p.price)}</div>
+                <div className="list-price">{fmtMoney(item.tiers?.[0]?.price ?? item.price)}</div>
               </div>
             ))}
           </div>
@@ -66,23 +95,50 @@ function ItemRow({ item, onChange, onRemove }) {
   const setName = (e) => onChange({ ...item, name: e.target.value })
   const lineTotal = (Number(item.qty) || 0) * (Number(item.unitPrice) || 0)
 
+  const selectTier = (tier) => {
+    onChange({ ...item, unitPrice: tier.price, selectedTier: tier })
+  }
+
+  const tiers = item.tiers || []
+
   return (
     <div className="card" style={{ marginBottom: 10 }}>
       <div className="row" style={{ marginBottom: 8 }}>
         <div className="grow" style={{ fontWeight: 700 }}>
           {item.isCustom ? (
-            <input className="input" value={item.name} onChange={setName} placeholder="שם הפריט (למשל: הנחה, משלוח)" />
+            <input className="input" value={item.name} onChange={setName} placeholder="שם הפריט" />
           ) : (
-            <span>{item.name}</span>
+            <span>
+              {item.name}
+              {item.isBundle && <span className="badge badge-blue" style={{ marginInlineStart: 6 }}>באנדל</span>}
+              {item.discounted && <span className="badge badge-violet" style={{ marginInlineStart: 6 }}>מבצע</span>}
+            </span>
           )}
         </div>
-        <button className="btn btn-sm btn-danger" onClick={onRemove} aria-label="הסר פריט">
+        <button className="btn btn-sm btn-danger" onClick={onRemove} aria-label="הסר">
           <IconX />
         </button>
       </div>
+
+      {tiers.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          {tiers.map((t, i) => (
+            <button
+              key={i}
+              type="button"
+              className={`chip ${item.selectedTier?.qty === t.qty && item.selectedTier?.price === t.price ? 'active' : ''}`}
+              onClick={() => selectTier(t)}
+              style={{ flex: 1, minWidth: 80 }}
+            >
+              {t.qty} × {fmtMoney(t.price)}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="input-row">
         <div>
-          <label className="label">כמות (יחידות)</label>
+          <label className="label">כמות</label>
           <input className="input" type="number" inputMode="decimal" step="1" min="1" value={item.qty} onChange={setQty} />
         </div>
         <div>
@@ -110,14 +166,14 @@ function FormSection({ num, title, children }) {
   )
 }
 
-export default function NewOrder({ products, editOrder, onDone, onCancel }) {
+export default function NewOrder({ products, bundles, discountRules, editOrder, onDone, onCancel }) {
   const [name, setName] = useState(editOrder?.customerName || '')
-  const [items, setItems] = useState(
+  const [rawItems, setRawItems] = useState(
     () =>
       editOrder?.items?.map((it) => ({
         ...it,
         key: nextKey(),
-        isCustom: !it.productId,
+        isCustom: !it.productId && !it.bundleId,
       })) || [],
   )
   const [payment, setPayment] = useState(editOrder?.paymentMethod || 'bit')
@@ -129,28 +185,67 @@ export default function NewOrder({ products, editOrder, onDone, onCancel }) {
   const [error, setError] = useState('')
   const scrollRef = useRef(null)
 
+  const items = useMemo(
+    () => applyDiscounts(rawItems, discountRules),
+    [rawItems, discountRules],
+  )
+
   const total = useMemo(
     () => items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0),
     [items],
   )
 
-  const pick = (product) => {
-    setItems((prev) => [...prev, newLine(product)])
+  const pickProduct = (product) => {
+    const tiers = product.tiers || (product.price ? [{ qty: 1, price: product.price }] : [])
+    const item = {
+      key: nextKey(),
+      productId: product.id,
+      bundleId: null,
+      name: product.name,
+      qty: 1,
+      unitPrice: tiers[0]?.price ?? product.price ?? 0,
+      selectedTier: tiers[0] || null,
+      tiers,
+      tracksStock: product.trackStock,
+      isCustom: false,
+      isBundle: false,
+    }
+    setRawItems((prev) => [...prev, item])
+    setPickerOpen(false)
+    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 80)
+  }
+
+  const pickBundle = (bundle) => {
+    const tiers = bundle.tiers || []
+    const item = {
+      key: nextKey(),
+      productId: null,
+      bundleId: bundle.id,
+      name: bundle.name,
+      qty: 1,
+      unitPrice: tiers[0]?.price ?? 0,
+      selectedTier: tiers[0] || null,
+      tiers,
+      tracksStock: false,
+      isCustom: false,
+      isBundle: true,
+    }
+    setRawItems((prev) => [...prev, item])
     setPickerOpen(false)
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 80)
   }
 
   const addCustom = () => {
-    setItems((prev) => [
+    setRawItems((prev) => [
       ...prev,
       { key: nextKey(), productId: null, name: '', qty: 1, unitPrice: 0, tracksStock: false, isCustom: true },
     ])
   }
 
   const updateItem = (key, updated) =>
-    setItems((prev) => prev.map((it) => (it.key === key ? updated : it)))
+    setRawItems((prev) => prev.map((it) => (it.key === key ? updated : it)))
 
-  const removeItem = (key) => setItems((prev) => prev.filter((it) => it.key !== key))
+  const removeItem = (key) => setRawItems((prev) => prev.filter((it) => it.key !== key))
 
   const submit = async () => {
     if (!name.trim()) return setError('צריך להזין שם לקוח')
@@ -163,11 +258,14 @@ export default function NewOrder({ products, editOrder, onDone, onCancel }) {
 
     const cleanItems = items.map(({ key: _key, ...it }) => ({
       productId: it.productId,
+      bundleId: it.bundleId || null,
       name: it.name,
       qty: Number(it.qty) || 0,
       unitPrice: Number(it.unitPrice) || 0,
       tracksStock: it.tracksStock,
       isCustom: it.isCustom,
+      isBundle: it.isBundle || false,
+      selectedTier: it.selectedTier || null,
     }))
 
     setSaving(true)
@@ -267,7 +365,7 @@ export default function NewOrder({ products, editOrder, onDone, onCancel }) {
       </div>
 
       {pickerOpen && (
-        <ProductPicker products={products} onPick={pick} onClose={() => setPickerOpen(false)} />
+        <ProductPicker products={products} bundles={bundles} onPickProduct={pickProduct} onPickBundle={pickBundle} onClose={() => setPickerOpen(false)} />
       )}
     </>
   )

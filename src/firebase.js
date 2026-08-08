@@ -43,6 +43,8 @@ export function onAuth(cb) {
 const productsCol = () => collection(db, 'products')
 const ordersCol = () => collection(db, 'orders')
 const purchasesCol = () => collection(db, 'purchases')
+const bundlesCol = () => collection(db, 'bundles')
+const discountRulesCol = () => collection(db, 'discountRules')
 
 export function watchProducts(cb) {
   const q = query(productsCol(), orderBy('createdAt', 'asc'))
@@ -80,11 +82,37 @@ function itemStockDelta(items) {
   return map
 }
 
-export async function saveOrder(order, existing = null) {
-  const oldMap = itemStockDelta(existing?.items)
-  const newMap = itemStockDelta(order.items)
+function bundleItemsStockDelta(items) {
+  const map = {}
+  for (const it of items || []) {
+    if (it.isBundle && it.bundleId && typeof it.qty === 'number') {
+      const bundle = bundlesCache[it.bundleId]
+      if (!bundle) continue
+      for (const bi of bundle.items || []) {
+        if (bi.productId) {
+          map[bi.productId] = (map[bi.productId] || 0) + it.qty * bi.qty
+        }
+      }
+    }
+  }
+  return map
+}
 
-  const productIds = new Set([...Object.keys(oldMap), ...Object.keys(newMap)])
+const bundlesCache = {}
+
+export function updateBundlesCache(bundles) {
+  for (const b of bundles) {
+    bundlesCache[b.id] = b
+  }
+}
+
+export async function saveOrder(order, existing = null) {
+  const oldProductMap = itemStockDelta(existing?.items)
+  const newProductMap = itemStockDelta(order.items)
+  const oldBundleMap = bundleItemsStockDelta(existing?.items)
+  const newBundleMap = bundleItemsStockDelta(order.items)
+
+  const productIds = new Set([...Object.keys(oldProductMap), ...Object.keys(newProductMap), ...Object.keys(oldBundleMap), ...Object.keys(newBundleMap)])
   const payload = {
     customerName: order.customerName,
     items: order.items,
@@ -97,7 +125,7 @@ export async function saveOrder(order, existing = null) {
 
   const newId = await runTransaction(db, async (tx) => {
     for (const id of productIds) {
-      const delta = (newMap[id] || 0) - (oldMap[id] || 0)
+      const delta = (newProductMap[id] || 0) - (oldProductMap[id] || 0) + (newBundleMap[id] || 0) - (oldBundleMap[id] || 0)
       if (delta === 0) continue
       const snap = await tx.get(doc(productsCol(), id))
       if (!snap.exists()) continue
@@ -129,6 +157,25 @@ export function watchPurchases(cb) {
   )
 }
 
+export function watchBundles(cb) {
+  const q = query(bundlesCol(), orderBy('createdAt', 'asc'))
+  return onSnapshot(q, (snap) =>
+    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+  )
+}
+
+export async function addBundle(data) {
+  return addDoc(bundlesCol(), { ...data, active: true, createdAt: serverTimestamp() })
+}
+
+export async function updateBundle(id, data) {
+  return updateDoc(doc(bundlesCol(), id), data)
+}
+
+export async function deleteBundle(id) {
+  return deleteDoc(doc(bundlesCol(), id))
+}
+
 export async function addPurchase(data) {
   return addDoc(purchasesCol(), { ...data, createdAt: serverTimestamp() })
 }
@@ -138,9 +185,13 @@ export async function deletePurchase(id) {
 }
 
 export async function deleteOrder(order) {
-  const map = itemStockDelta(order.items)
+  const productMap = itemStockDelta(order.items)
+  const bundleMap = bundleItemsStockDelta(order.items)
+  const allIds = new Set([...Object.keys(productMap), ...Object.keys(bundleMap)])
   await runTransaction(db, async (tx) => {
-    for (const [id, qty] of Object.entries(map)) {
+    for (const id of allIds) {
+      const qty = (productMap[id] || 0) + (bundleMap[id] || 0)
+      if (qty === 0) continue
       const snap = await tx.get(doc(productsCol(), id))
       if (!snap.exists()) continue
       const product = snap.data()
@@ -149,4 +200,23 @@ export async function deleteOrder(order) {
     }
     tx.delete(doc(ordersCol(), order.id))
   })
+}
+
+export function watchDiscountRules(cb) {
+  const q = query(discountRulesCol(), orderBy('createdAt', 'asc'))
+  return onSnapshot(q, (snap) =>
+    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+  )
+}
+
+export async function addDiscountRule(data) {
+  return addDoc(discountRulesCol(), { ...data, active: true, createdAt: serverTimestamp() })
+}
+
+export async function updateDiscountRule(id, data) {
+  return updateDoc(doc(discountRulesCol(), id), data)
+}
+
+export async function deleteDiscountRule(id) {
+  return deleteDoc(doc(discountRulesCol(), id))
 }
