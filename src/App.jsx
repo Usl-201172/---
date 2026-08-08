@@ -5,8 +5,9 @@ import {
   onAuth,
   watchProducts,
   watchOrders,
+  watchPurchases,
 } from './firebase'
-import { IconPlus, IconHome, IconOrders, IconProducts } from './components/icons'
+import { IconPlus, IconHome, IconOrders, IconProducts, IconWarehouse } from './components/icons'
 import Dashboard from './pages/Dashboard'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
@@ -14,11 +15,13 @@ import NewOrder from './pages/NewOrder'
 import Products from './pages/Products'
 import Setup from './pages/Setup'
 import Gate from './components/Gate'
+import Warehouse from './pages/Warehouse'
 
 const TITLES = {
   dashboard: ['החנות שלי', 'פירות וירקות'],
   orders: ['הזמנות', 'ניהול הזמנות'],
-  products: ['מוצרים', 'קטלוג ומלאי'],
+  products: ['מוצרים', 'קטלוג'],
+  warehouse: ['מחסן', 'רכישות ועלויות'],
   newOrder: ['הזמנה חדשה', ''],
   order: ['פרטי הזמנה', ''],
 }
@@ -26,6 +29,7 @@ const TITLES = {
 const NAV = [
   { key: 'dashboard', label: 'בית', icon: IconHome },
   { key: 'orders', label: 'הזמנות', icon: IconOrders },
+  { key: 'warehouse', label: 'מחסן', icon: IconWarehouse },
   { key: 'products', label: 'מוצרים', icon: IconProducts },
 ]
 
@@ -35,6 +39,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(!isConfigured)
   const [products, setProducts] = useState(null)
   const [orders, setOrders] = useState(null)
+  const [purchases, setPurchases] = useState(null)
   const [gateOk, setGateOk] = useState(() => localStorage.getItem('gate_ok') === '1')
 
   useEffect(() => {
@@ -51,9 +56,11 @@ export default function App() {
     if (!isConfigured || !authed) return
     const unsubP = watchProducts(setProducts)
     const unsubO = watchOrders(setOrders)
+    const unsubPr = watchPurchases(setPurchases)
     return () => {
       unsubP()
       unsubO()
+      unsubPr()
     }
   }, [authed])
 
@@ -85,7 +92,7 @@ export default function App() {
     )
   }
 
-  const loading = !products || !orders
+  const loading = !products || !orders || !purchases
 
   const renderPage = () => {
     if (loading) {
@@ -124,6 +131,8 @@ export default function App() {
         )
       case 'products':
         return <Products products={products} />
+      case 'warehouse':
+        return <Warehouse products={products} purchases={purchases} />
       default:
         return <Dashboard orders={orders} products={products} onOpen={openDashboard} onLock={lock} />
     }

@@ -86,7 +86,7 @@ const PRODUCE_EMOJI = {
   'בצל ירוק': '🧅', 'שום ירוק': '🧅',
   'ירקות': '🥦', 'ירק': '🥦',
   'ackers': '🍎', 'apples': '🍎',
-  'bananas': '🍌', 'bananas': '🍌',
+  'bananas': '🍌',
   'oranges': '🍊', 'tomatoes': '🍅',
   'potatoes': '🥔', 'carrots': '🥕',
 }

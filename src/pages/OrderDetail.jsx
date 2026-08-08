@@ -79,9 +79,14 @@ export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
           return (
             <div className="order-item" key={i}>
               <div className="order-item-qty">
-                {fmtQty(it)} {it.unit === 'weight' ? 'ק"ג' : 'יח'}
+                {fmtQty(it)} יח
               </div>
-              <div className="order-item-name">{it.name}</div>
+              <div className="order-item-name">
+                {it.name}
+                <span className="small muted" style={{ display: 'block' }}>
+                  {fmtMoney(it.unitPrice)} ליחידה
+                </span>
+              </div>
               <div className="order-item-price">{fmtMoney(lineTotal)}</div>
             </div>
           )

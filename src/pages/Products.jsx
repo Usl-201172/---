@@ -1,15 +1,13 @@
 import { useState } from 'react'
 import { addProduct, updateProduct, deleteProduct } from '../firebase'
-import { fmtMoney, CATEGORIES } from '../utils'
+import { fmtMoney } from '../utils'
 import { IconPlus, IconTrash, IconEdit } from '../components/icons'
 
 function emptyProduct() {
   return {
     name: '',
-    category: 'ירקות',
-    unit: 'unit',
     price: '',
-    cost: '',
+    unitWeight: '',
     trackStock: true,
     stock: 0,
   }
@@ -18,7 +16,7 @@ function emptyProduct() {
 function ProductModal({ product, onClose, onSaved }) {
   const [form, setForm] = useState(
     product
-      ? { ...product, price: product.price ?? '', cost: product.cost ?? '', stock: product.stock ?? 0 }
+      ? { ...product, price: product.price ?? '', unitWeight: product.unitWeight ?? '', stock: product.stock ?? 0 }
       : emptyProduct(),
   )
   const [saving, setSaving] = useState(false)
@@ -34,10 +32,8 @@ function ProductModal({ product, onClose, onSaved }) {
     try {
       const data = {
         name: form.name.trim(),
-        category: form.category,
-        unit: form.unit,
         price: Number(form.price),
-        cost: form.cost === '' ? null : Number(form.cost),
+        unitWeight: form.unitWeight === '' ? null : Number(form.unitWeight),
         trackStock: form.trackStock,
         stock: Number(form.stock || 0),
       }
@@ -61,35 +57,14 @@ function ProductModal({ product, onClose, onSaved }) {
           <input className="input" value={form.name} onChange={set('name')} placeholder="למשל: עגבניות" autoFocus />
         </div>
 
-        <div className="field">
-          <label className="label">קטגוריה</label>
-          <select className="select" value={form.category} onChange={set('category')}>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="field">
-          <label className="label">יחידת מכירה</label>
-          <div className="chips">
-            <button type="button" className={`chip ${form.unit === 'unit' ? 'active' : ''}`} onClick={() => setForm({ ...form, unit: 'unit' })}>
-              <span>🧺</span> יחידות
-            </button>
-            <button type="button" className={`chip ${form.unit === 'weight' ? 'active' : ''}`} onClick={() => setForm({ ...form, unit: 'weight' })}>
-              <span>⚖️</span> משקל (ק"ג)
-            </button>
-          </div>
-        </div>
-
         <div className="input-row">
           <div className="field">
-            <label className="label">מחיר מכירה (₪)</label>
+            <label className="label">מחיר ליחידה (₪)</label>
             <input className="input" type="number" inputMode="decimal" step="0.01" value={form.price} onChange={num('price')} placeholder="0.00" />
           </div>
           <div className="field">
-            <label className="label">מחיר רכש (₪)</label>
-            <input className="input" type="number" inputMode="decimal" step="0.01" value={form.cost} onChange={num('cost')} placeholder="אופציונלי" />
+            <label className="label">משקל ליחידה (ק"ג)</label>
+            <input className="input" type="number" inputMode="decimal" step="0.01" value={form.unitWeight} onChange={num('unitWeight')} placeholder="למשל: 5" />
           </div>
         </div>
 
@@ -103,7 +78,7 @@ function ProductModal({ product, onClose, onSaved }) {
 
         {form.trackStock && (
           <div className="field">
-            <label className="label">כמות במלאי</label>
+            <label className="label">כמות במלאי (יחידות)</label>
             <input className="input" type="number" inputMode="decimal" step="0.01" value={form.stock} onChange={num('stock')} />
           </div>
         )}
@@ -116,41 +91,6 @@ function ProductModal({ product, onClose, onSaved }) {
           </button>
           <button className="btn btn-outline" onClick={onClose}>ביטול</button>
         </div>
-      </div>
-    </div>
-  )
-}
-
-const EMOJI = { 'פירות': '🍎', 'ירקות': '🥦', 'אחר': '📦' }
-
-function ProductCard({ product, onEdit, onDelete }) {
-  const low = product.trackStock && Number(product.stock) <= Number(product.minStock || 0)
-  const unitLabel = product.unit === 'weight' ? 'ק"ג' : 'יח'
-  const cls = product.category === 'פירות' ? 'fruit' : product.category === 'ירקות' ? '' : 'other'
-
-  return (
-    <div className={`product-card rise ${cls}`}>
-      <div className="product-actions">
-        <button className="product-action-btn" onClick={onEdit} aria-label="ערוך">
-          <IconEdit />
-        </button>
-        <button className="product-action-btn delete" onClick={onDelete} aria-label="מחק">
-          <IconTrash />
-        </button>
-      </div>
-      <div className="product-emoji">{EMOJI[product.category] || '📦'}</div>
-      <div className="product-name">{product.name}</div>
-      <div className="product-price">
-        {fmtMoney(product.price)} <span className="unit">ל{unitLabel}</span>
-      </div>
-      <div className="product-stock">
-        {product.trackStock ? (
-          <span className={`badge ${low ? 'badge-red' : 'badge-green'}`}>
-            מלאי: {product.stock} {unitLabel}
-          </span>
-        ) : (
-          <span className="badge badge-gray">בלי מלאי</span>
-        )}
       </div>
     </div>
   )
@@ -180,9 +120,36 @@ export default function Products({ products }) {
         </div>
       ) : (
         <div className="product-grid">
-          {active.map((p) => (
-            <ProductCard key={p.id} product={p} onEdit={() => setModal(p)} onDelete={() => confirmDelete(p)} />
-          ))}
+          {active.map((p) => {
+            const low = p.trackStock && Number(p.stock) <= 2
+
+            return (
+              <div key={p.id} className="product-card rise">
+                <div className="product-actions">
+                  <button className="product-action-btn" onClick={() => setModal(p)} aria-label="ערוך">
+                    <IconEdit />
+                  </button>
+                  <button className="product-action-btn delete" onClick={() => confirmDelete(p)} aria-label="מחק">
+                    <IconTrash />
+                  </button>
+                </div>
+                <div className="product-name">{p.name}</div>
+                <div className="product-price">{fmtMoney(p.price)}</div>
+                {p.unitWeight ? (
+                  <div className="small muted">⚖️ {p.unitWeight} ק"ג ליחידה</div>
+                ) : null}
+                <div className="product-stock">
+                  {p.trackStock ? (
+                    <span className={`badge ${low ? 'badge-red' : 'badge-green'}`}>
+                      מלאי: {p.stock} יח
+                    </span>
+                  ) : (
+                    <span className="badge badge-gray">בלי מלאי</span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 

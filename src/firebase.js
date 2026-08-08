@@ -42,6 +42,7 @@ export function onAuth(cb) {
 
 const productsCol = () => collection(db, 'products')
 const ordersCol = () => collection(db, 'orders')
+const purchasesCol = () => collection(db, 'purchases')
 
 export function watchProducts(cb) {
   const q = query(productsCol(), orderBy('createdAt', 'asc'))
@@ -119,6 +120,21 @@ export async function saveOrder(order, existing = null) {
 
 export function patchOrder(id, data) {
   return updateDoc(doc(ordersCol(), id), data)
+}
+
+export function watchPurchases(cb) {
+  const q = query(purchasesCol(), orderBy('createdAt', 'desc'), limit(200))
+  return onSnapshot(q, (snap) =>
+    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+  )
+}
+
+export async function addPurchase(data) {
+  return addDoc(purchasesCol(), { ...data, createdAt: serverTimestamp() })
+}
+
+export async function deletePurchase(id) {
+  return deleteDoc(doc(purchasesCol(), id))
 }
 
 export async function deleteOrder(order) {

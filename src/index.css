@@ -777,26 +777,6 @@ p {
   transform: scale(0.98);
 }
 
-.product-emoji {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  margin-bottom: 10px;
-  background: linear-gradient(135deg, var(--primary-softer), #d1fae5);
-}
-
-.product-card.fruit .product-emoji {
-  background: linear-gradient(135deg, #fff7ed, #fed7aa);
-}
-
-.product-card.other .product-emoji {
-  background: linear-gradient(135deg, var(--violet-softer), #ede9fe);
-}
-
 .product-name {
   font-weight: 800;
   font-size: 15px;

@@ -6,16 +6,12 @@ import { IconPlus, IconX } from '../components/icons'
 let keyCounter = 0
 const nextKey = () => `item-${Date.now()}-${keyCounter++}`
 
-const UNIT_LABEL = { unit: 'יחידות', weight: 'ק"ג' }
-const EMOJI = { 'פירות': '🍎', 'ירקות': '🥦', 'אחר': '📦' }
-
-function newLine(product, initialQty) {
+function newLine(product) {
   return {
     key: nextKey(),
     productId: product.id,
     name: product.name,
-    unit: product.unit,
-    qty: initialQty == null ? '' : initialQty,
+    qty: 1,
     unitPrice: product.price ?? 0,
     tracksStock: product.trackStock,
     isCustom: false,
@@ -44,11 +40,11 @@ function ProductPicker({ products, onPick, onClose }) {
           <div className="list" style={{ margin: 0 }}>
             {filtered.map((p) => (
               <div className="list-row" key={p.id} onClick={() => onPick(p)}>
-                <div className="list-avatar">{EMOJI[p.category] || '📦'}</div>
                 <div className="list-main">
                   <div className="list-title">{p.name}</div>
                   <div className="list-sub">
-                    {fmtMoney(p.price)} ל{UNIT_LABEL[p.unit]}
+                    {fmtMoney(p.price)} ליחידה
+                    {p.unitWeight ? ` · ${p.unitWeight} ק"ג` : ''}
                     {p.trackStock ? ` · מלאי: ${p.stock}` : ''}
                   </div>
                 </div>
@@ -67,16 +63,12 @@ function ItemRow({ item, onChange, onRemove }) {
     const v = e.target.value
     onChange({ ...item, qty: v === '' ? '' : Number(v) })
   }
-  const setPrice = (e) => {
-    const v = e.target.value
-    onChange({ ...item, unitPrice: v === '' ? '' : Number(v) })
-  }
   const setName = (e) => onChange({ ...item, name: e.target.value })
   const lineTotal = (Number(item.qty) || 0) * (Number(item.unitPrice) || 0)
 
   return (
     <div className="card" style={{ marginBottom: 10 }}>
-      <div className="row" style={{ marginBottom: 10 }}>
+      <div className="row" style={{ marginBottom: 8 }}>
         <div className="grow" style={{ fontWeight: 700 }}>
           {item.isCustom ? (
             <input className="input" value={item.name} onChange={setName} placeholder="שם הפריט (למשל: הנחה, משלוח)" />
@@ -88,27 +80,19 @@ function ItemRow({ item, onChange, onRemove }) {
           <IconX />
         </button>
       </div>
-      <div className="input-row-3">
+      <div className="input-row">
         <div>
-          <label className="label">כמות</label>
-          <input
-            className="input"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            value={item.qty}
-            onChange={setQty}
-            placeholder="0"
-          />
+          <label className="label">כמות (יחידות)</label>
+          <input className="input" type="number" inputMode="decimal" step="1" min="1" value={item.qty} onChange={setQty} />
         </div>
         <div>
-          <label className="label">{item.unit === 'weight' ? 'מחיר לק"ג' : 'מחיר ליחידה'}</label>
-          <input className="input" type="number" inputMode="decimal" step="0.01" value={item.unitPrice} onChange={setPrice} placeholder="0.00" />
+          <label className="label">מחיר ליחידה</label>
+          <div style={{ fontSize: 17, fontWeight: 800, paddingTop: 8 }}>{fmtMoney(item.unitPrice)}</div>
         </div>
-        <div>
-          <label className="label">סה"כ</label>
-          <div style={{ fontSize: 17, fontWeight: 800, paddingTop: 8 }}>{fmtMoney(lineTotal)}</div>
-        </div>
+      </div>
+      <div className="total-row grand" style={{ marginTop: 6 }}>
+        <span>סה"כ</span>
+        <span>{fmtMoney(lineTotal)}</span>
       </div>
     </div>
   )
@@ -130,7 +114,11 @@ export default function NewOrder({ products, editOrder, onDone, onCancel }) {
   const [name, setName] = useState(editOrder?.customerName || '')
   const [items, setItems] = useState(
     () =>
-      editOrder?.items?.map((it) => ({ ...it, key: nextKey(), isCustom: !it.productId })) || [],
+      editOrder?.items?.map((it) => ({
+        ...it,
+        key: nextKey(),
+        isCustom: !it.productId,
+      })) || [],
   )
   const [payment, setPayment] = useState(editOrder?.paymentMethod || 'bit')
   const [paid, setPaid] = useState(editOrder?.paid ?? false)
@@ -155,7 +143,7 @@ export default function NewOrder({ products, editOrder, onDone, onCancel }) {
   const addCustom = () => {
     setItems((prev) => [
       ...prev,
-      { key: nextKey(), productId: null, name: 'הנחה', unit: 'unit', qty: 1, unitPrice: 0, tracksStock: false, isCustom: true },
+      { key: nextKey(), productId: null, name: '', qty: 1, unitPrice: 0, tracksStock: false, isCustom: true },
     ])
   }
 
@@ -167,10 +155,21 @@ export default function NewOrder({ products, editOrder, onDone, onCancel }) {
   const submit = async () => {
     if (!name.trim()) return setError('צריך להזין שם לקוח')
     if (items.length === 0) return setError('צריך לבחור לפחות מוצר אחד')
-    const valid = items.every((it) => (Number(it.qty) || 0) > 0)
-    if (!valid) return setError('הזן כמות גדולה מ-0 לכל הפריטים')
 
-    const cleanItems = items.map(({ key: _key, ...it }) => ({ ...it, qty: Number(it.qty), unitPrice: Number(it.unitPrice) }))
+    for (const it of items) {
+      if ((Number(it.qty) || 0) <= 0) return setError(`הזן כמות עבור "${it.name || 'פריט'}"`)
+      if (it.isCustom && !it.name.trim()) return setError('הזן שם לפריט החד-פעמי')
+    }
+
+    const cleanItems = items.map(({ key: _key, ...it }) => ({
+      productId: it.productId,
+      name: it.name,
+      qty: Number(it.qty) || 0,
+      unitPrice: Number(it.unitPrice) || 0,
+      tracksStock: it.tracksStock,
+      isCustom: it.isCustom,
+    }))
+
     setSaving(true)
     setError('')
     try {

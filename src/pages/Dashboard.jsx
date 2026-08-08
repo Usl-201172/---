@@ -1,4 +1,4 @@
-import { fmtMoney, fmtQty, isToday } from '../utils'
+import { fmtMoney, isToday } from '../utils'
 
 function fmtTime(ts) {
   if (!ts) return ''
@@ -40,9 +40,7 @@ export default function Dashboard({ orders, products, onOpen, onLock }) {
   const todayOrders = orders.filter((o) => isToday(o.createdAt))
   const todayPaidOrders = todayOrders.filter((o) => o.paid)
   const todayRevenue = todayPaidOrders.reduce((s, o) => s + (Number(o.total) || 0), 0)
-  const unpaidTotal = todayOrders.filter((o) => !o.paid).reduce((s, o) => s + (Number(o.total) || 0), 0)
-  const debts = orders.filter((o) => !o.paid)
-  const totalDebt = debts.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  const unpaidToday = todayOrders.filter((o) => !o.paid)
 
   const lowStock = products
     .filter((p) => p.active && p.trackStock && Number(p.stock) <= 2)
@@ -69,8 +67,8 @@ export default function Dashboard({ orders, products, onOpen, onLock }) {
             <span className="hero-chip-label">שולמו היום</span>
           </div>
           <div className="hero-chip">
-            <span className="hero-chip-num">{fmtMoney(unpaidTotal)}</span>
-            <span className="hero-chip-label">ממתינים לתשלום</span>
+            <span className="hero-chip-num">{unpaidToday.length}</span>
+            <span className="hero-chip-label">ממתינות לתשלום</span>
           </div>
         </div>
       </section>
@@ -83,7 +81,7 @@ export default function Dashboard({ orders, products, onOpen, onLock }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {lowStock.map((p) => (
               <span key={p.id} className="badge badge-amber">
-                {p.name} · {fmtQty({ qty: p.stock })} {p.unit === 'weight' ? 'ק"ג' : 'יח'}
+                {p.icon} {p.name} · {p.stock} יח
               </span>
             ))}
           </div>
