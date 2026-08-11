@@ -1139,6 +1139,21 @@ p {
   margin: 0 auto 14px;
 }
 
+.modal-picker {
+  height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-picker .picker-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-inline: -18px;
+  padding-inline: 18px;
+}
+
 .modal-title {
   font-size: 17px;
   font-weight: 800;

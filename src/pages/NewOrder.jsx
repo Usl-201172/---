@@ -47,7 +47,7 @@ function ProductPicker({ products, bundles, onPickProduct, onPickBundle, onClose
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal-picker" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grabber" />
         <div className="modal-title">בחירת מוצרים</div>
         <div className="field">
@@ -57,31 +57,33 @@ function ProductPicker({ products, bundles, onPickProduct, onPickBundle, onClose
           <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>מוצרים</button>
           <button className={tab === 'bundles' ? 'active' : ''} onClick={() => setTab('bundles')}>באנדלים</button>
         </div>
-        {items.length === 0 ? (
-          <div className="empty" style={{ padding: 20 }}>
-            <div className="empty-sub">{tab === 'products' ? 'לא נמצאו מוצרים' : 'לא נמצאו באנדלים'}</div>
-          </div>
-        ) : (
-          <div className="list" style={{ margin: 0 }}>
-            {items.map((item) => (
-              <div className="list-row" key={item.id} onClick={() => pick(item)}>
-                <div className="list-main">
-                  <div className="list-title">
-                    {item.name}
-                    {tab === 'bundles' && <span className="badge badge-blue">באנדל</span>}
+        <div className="picker-scroll">
+          {items.length === 0 ? (
+            <div className="empty" style={{ padding: 20 }}>
+              <div className="empty-sub">{tab === 'products' ? 'לא נמצאו מוצרים' : 'לא נמצאו באנדלים'}</div>
+            </div>
+          ) : (
+            <div className="list" style={{ margin: 0 }}>
+              {items.map((item) => (
+                <div className="list-row" key={item.id} onClick={() => pick(item)}>
+                  <div className="list-main">
+                    <div className="list-title">
+                      {item.name}
+                      {tab === 'bundles' && <span className="badge badge-blue">באנדל</span>}
+                    </div>
+                    <div className="list-sub">
+                      {item.tiers?.map((t, i) => (
+                        <span key={i}>{t.qty} × {fmtMoney(t.price)}{i < item.tiers.length - 1 ? ' · ' : ''}</span>
+                      ))}
+                      {!item.tiers?.length && item.price && fmtMoney(item.price)}
+                    </div>
                   </div>
-                  <div className="list-sub">
-                    {item.tiers?.map((t, i) => (
-                      <span key={i}>{t.qty} × {fmtMoney(t.price)}{i < item.tiers.length - 1 ? ' · ' : ''}</span>
-                    ))}
-                    {!item.tiers?.length && item.price && fmtMoney(item.price)}
-                  </div>
+                  <div className="list-price">{fmtMoney(item.tiers?.[0]?.price ?? item.price)}</div>
                 </div>
-                <div className="list-price">{fmtMoney(item.tiers?.[0]?.price ?? item.price)}</div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
