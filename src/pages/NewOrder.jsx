@@ -95,6 +95,10 @@ function ItemRow({ item, onChange, onRemove }) {
     onChange({ ...item, qty: v === '' ? '' : Number(v) })
   }
   const setName = (e) => onChange({ ...item, name: e.target.value })
+  const setPrice = (e) => {
+    const v = e.target.value
+    onChange({ ...item, unitPrice: v === '' ? '' : Number(v) })
+  }
   const lineTotal = (Number(item.qty) || 0) * (Number(item.unitPrice) || 0)
 
   const selectTier = (tier) => {
@@ -145,7 +149,21 @@ function ItemRow({ item, onChange, onRemove }) {
         </div>
         <div>
           <label className="label">מחיר ליחידה</label>
-          <div style={{ fontSize: 20, fontWeight: 900, paddingTop: 8, color: 'var(--primary-dark)' }}>{fmtMoney(item.unitPrice)}</div>
+          {item.isCustom ? (
+            <input
+              className="input"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={item.unitPrice}
+              onChange={setPrice}
+              placeholder="0"
+              style={{ fontWeight: 800, fontSize: 16 }}
+            />
+          ) : (
+            <div style={{ fontSize: 20, fontWeight: 900, paddingTop: 8, color: 'var(--primary-dark)' }}>{fmtMoney(item.unitPrice)}</div>
+          )}
         </div>
       </div>
       <div className="total-row grand" style={{ marginTop: 8, paddingTop: 10, borderTopWidth: 2 }}>
