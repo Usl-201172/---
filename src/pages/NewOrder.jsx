@@ -207,7 +207,7 @@ export default function NewOrder({ products, bundles, discountRules, editOrder, 
       unitPrice: tiers[0]?.price ?? product.price ?? 0,
       selectedTier: tiers[0] || null,
       tiers,
-      tracksStock: product.trackStock,
+      tracksStock: product.trackStock !== false,
       isCustom: false,
       isBundle: false,
     }
@@ -263,7 +263,7 @@ export default function NewOrder({ products, bundles, discountRules, editOrder, 
       name: it.name,
       qty: Number(it.qty) || 0,
       unitPrice: Number(it.unitPrice) || 0,
-      tracksStock: it.tracksStock,
+      tracksStock: !!it.tracksStock,
       isCustom: it.isCustom,
       isBundle: it.isBundle || false,
       selectedTier: it.selectedTier || null,
@@ -286,7 +286,7 @@ export default function NewOrder({ products, bundles, discountRules, editOrder, 
       onDone(id)
     } catch (e) {
       console.error(e)
-      setError('שגיאה בשמירת ההזמנה, נסה שוב')
+      setError(`שגיאה בשמירת ההזמנה: ${e.message}`)
       setSaving(false)
     }
   }

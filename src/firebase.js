@@ -116,6 +116,20 @@ export function updateBundlesCache(bundles) {
   }
 }
 
+function sanitize(v) {
+  if (v === undefined) return null
+  if (typeof v === 'number' && Number.isNaN(v)) return 0
+  if (Array.isArray(v)) return v.map(sanitize)
+  if (v && typeof v === 'object') {
+    const out = {}
+    for (const [k, val] of Object.entries(v)) {
+      if (val !== undefined) out[k] = sanitize(val)
+    }
+    return out
+  }
+  return v
+}
+
 export async function saveOrder(order, existing = null) {
   const oldProductMap = itemStockDelta(existing?.items)
   const newProductMap = itemStockDelta(order.items)
@@ -123,14 +137,14 @@ export async function saveOrder(order, existing = null) {
   const newBundleMap = bundleItemsStockDelta(order.items)
 
   const productIds = new Set([...Object.keys(oldProductMap), ...Object.keys(newProductMap), ...Object.keys(oldBundleMap), ...Object.keys(newBundleMap)])
-  const payload = {
+  const payload = sanitize({
     customerName: order.customerName,
     items: order.items,
     total: order.total,
     paymentMethod: order.paymentMethod,
     paid: order.paid,
     notes: order.notes || '',
-  }
+  })
 
   const newId = await runTransaction(db, async (tx) => {
     for (const id of productIds) {
