@@ -8,6 +8,8 @@ export default function Gate() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showPass, setShowPass] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -72,27 +74,69 @@ export default function Gate() {
 
         <div className="field">
           <label className="label">סיסמה</label>
-          <input
-            className="input"
-            type="password"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            placeholder="לפחות 6 תווים"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              className="input"
+              type={showPass ? 'text' : 'password'}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              placeholder="לפחות 6 תווים"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{ paddingInlineEnd: 44 }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass(!showPass)}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                insetInlineEnd: 10,
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 18,
+                color: 'var(--muted)',
+                padding: 4,
+              }}
+            >
+              {showPass ? '🙈' : '👁️'}
+            </button>
+          </div>
         </div>
 
         {mode === 'register' && (
           <div className="field">
             <label className="label">אישור סיסמה</label>
-            <input
-              className="input"
-              type="password"
-              autoComplete="new-password"
-              placeholder="הכנס סיסמה שוב"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input"
+                type={showConfirm ? 'text' : 'password'}
+                autoComplete="new-password"
+                placeholder="הכנס סיסמה שוב"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                style={{ paddingInlineEnd: 44 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  insetInlineEnd: 10,
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 18,
+                  color: 'var(--muted)',
+                  padding: 4,
+                }}
+              >
+                {showConfirm ? '🙈' : '👁️'}
+              </button>
+            </div>
           </div>
         )}
 
