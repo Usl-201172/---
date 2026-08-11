@@ -147,14 +147,23 @@ export async function saveOrder(order, existing = null) {
   })
 
   const newId = await runTransaction(db, async (tx) => {
+    const targets = []
     for (const id of productIds) {
       const delta = (newProductMap[id] || 0) - (oldProductMap[id] || 0) + (newBundleMap[id] || 0) - (oldBundleMap[id] || 0)
       if (delta === 0) continue
+      targets.push({ id, delta })
+    }
+
+    const stocks = {}
+    for (const { id } of targets) {
       const snap = await tx.get(doc(productsCol(), id))
-      if (!snap.exists()) continue
-      const product = snap.data()
-      const newStock = (typeof product.stock === 'number' ? product.stock : 0) - delta
-      tx.update(snap.ref, { stock: Math.max(0, newStock) })
+      stocks[id] = snap.exists() ? snap.data().stock : null
+    }
+
+    for (const { id, delta } of targets) {
+      if (stocks[id] === null) continue
+      const newStock = (typeof stocks[id] === 'number' ? stocks[id] : 0) - delta
+      tx.update(doc(productsCol(), id), { stock: Math.max(0, newStock) })
     }
 
     if (existing) {
@@ -212,15 +221,25 @@ export async function deleteOrder(order) {
   const bundleMap = bundleItemsStockDelta(order.items)
   const allIds = new Set([...Object.keys(productMap), ...Object.keys(bundleMap)])
   await runTransaction(db, async (tx) => {
+    const targets = []
     for (const id of allIds) {
       const qty = (productMap[id] || 0) + (bundleMap[id] || 0)
       if (qty === 0) continue
-      const snap = await tx.get(doc(productsCol(), id))
-      if (!snap.exists()) continue
-      const product = snap.data()
-      const newStock = (typeof product.stock === 'number' ? product.stock : 0) + qty
-      tx.update(snap.ref, { stock: newStock })
+      targets.push({ id, qty })
     }
+
+    const stocks = {}
+    for (const { id } of targets) {
+      const snap = await tx.get(doc(productsCol(), id))
+      stocks[id] = snap.exists() ? snap.data().stock : null
+    }
+
+    for (const { id, qty } of targets) {
+      if (stocks[id] === null) continue
+      const newStock = (typeof stocks[id] === 'number' ? stocks[id] : 0) + qty
+      tx.update(doc(productsCol(), id), { stock: newStock })
+    }
+
     tx.delete(doc(ordersCol(), order.id))
   })
 }
