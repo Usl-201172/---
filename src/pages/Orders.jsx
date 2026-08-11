@@ -6,18 +6,17 @@ function OrderRow({ order, onOpen }) {
   return (
     <div className="list-row rise" onClick={() => onOpen(order.id)}>
       <div className={`list-avatar ${pay === 'bit' ? 'blue' : pay === 'paybox' ? 'violet' : 'amber'}`}>
-        {pay === 'bit' ? '📱' : pay === 'paybox' ? '💳' : '💵'}
+        {pay === 'bit' ? '📱' : pay === 'paybox' ? '💳' : pay === 'unpaid' ? '⏳' : '💵'}
       </div>
       <div className="list-main">
         <div className="list-title">{order.customerName || 'בלי שם'}</div>
         <div className="list-sub">{fmtDateTime(order.createdAt)} · {payLabel(pay)}</div>
         <div className="list-badges">
           {order.paid ? (
-            <span className="badge badge-green">שולם</span>
+            <span className="badge badge-green">התשלום נלקח</span>
           ) : (
             <span className="badge badge-red">חוב</span>
           )}
-          {order.arrived && <span className="badge badge-gray">הגיע</span>}
         </div>
       </div>
       <div className="list-end">
@@ -30,7 +29,6 @@ function OrderRow({ order, onOpen }) {
 const TABS = [
   { key: 'all', label: 'הכל' },
   { key: 'today', label: 'היום' },
-  { key: 'unarrived', label: 'לא הגיעו' },
 ]
 
 export default function Orders({ orders, onOpen }) {
@@ -49,7 +47,6 @@ export default function Orders({ orders, onOpen }) {
           d.getFullYear() === now.getFullYear()
         )
       })
-    if (tab === 'unarrived') list = list.filter((o) => !o.arrived)
     if (q.trim()) list = list.filter((o) => (o.customerName || '').includes(q.trim()))
     return list
   }, [orders, tab, q])

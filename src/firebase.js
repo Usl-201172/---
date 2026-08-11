@@ -129,7 +129,6 @@ export async function saveOrder(order, existing = null) {
     total: order.total,
     paymentMethod: order.paymentMethod,
     paid: order.paid,
-    arrived: order.arrived,
     notes: order.notes || '',
   }
 

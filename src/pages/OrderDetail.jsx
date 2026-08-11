@@ -1,43 +1,12 @@
 import { useState } from 'react'
 import { patchOrder, deleteOrder } from '../firebase'
 import { fmtMoney, fmtQty, fmtDateTime, payLabel } from '../utils'
-import { IconBack, IconEdit, IconTrash, IconCheck, IconTruck } from '../components/icons'
-
-function ToggleCard({ order }) {
-  return (
-    <div className="card rise rise-1">
-      <div className="switch-row">
-        <span className="switch-label">
-          <IconCheck /> שולם ({payLabel(order.paymentMethod)})
-        </span>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={order.paid}
-            onChange={(e) => patchOrder(order.id, { paid: e.target.checked })}
-          />
-          <span className="slider" />
-        </label>
-      </div>
-      <div className="switch-row">
-        <span className="switch-label">
-          <IconTruck /> הסחורה הגיעה
-        </span>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={order.arrived}
-            onChange={(e) => patchOrder(order.id, { arrived: e.target.checked })}
-          />
-          <span className="slider" />
-        </label>
-      </div>
-    </div>
-  )
-}
+import { IconBack, IconEdit, IconTrash } from '../components/icons'
 
 export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
   const [deleting, setDeleting] = useState(false)
+
+  const togglePaid = () => patchOrder(order.id, { paid: !order.paid })
 
   const confirmDelete = async () => {
     if (!window.confirm('למחוק את ההזמנה הזו? המלאי יוחזר.')) return
@@ -50,6 +19,8 @@ export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
     }
   }
 
+  const payIcon = order.paymentMethod === 'bit' ? '📱' : order.paymentMethod === 'paybox' ? '💳' : order.paymentMethod === 'unpaid' ? '⏳' : '💵'
+
   return (
     <>
       <div className="detail-hero">
@@ -60,15 +31,21 @@ export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
         <div className="detail-hero-total">{fmtMoney(order.total)}</div>
         <div className="detail-hero-meta">
           <span className="badge">{fmtDateTime(order.createdAt)}</span>
-          <span className="badge">
-            {order.paymentMethod === 'bit' ? '📱' : order.paymentMethod === 'paybox' ? '💳' : '💵'} {payLabel(order.paymentMethod)}
-          </span>
-          {order.paid ? <span className="badge">✓ שולם</span> : <span className="badge">חוב</span>}
-          {order.arrived ? <span className="badge">הגיע</span> : null}
+          {order.paymentMethod !== 'unpaid' && (
+            <span className="badge">
+              {payIcon} {payLabel(order.paymentMethod)}
+            </span>
+          )}
+          <button
+            className={`badge ${order.paid ? 'badge-green' : 'badge-red'}`}
+            onClick={togglePaid}
+            style={{ border: 'none', cursor: 'pointer' }}
+            title="לחץ לשינוי סטטוס"
+          >
+            {order.paid ? '✓ התשלום נלקח' : 'חוב'}
+          </button>
         </div>
       </div>
-
-      <ToggleCard order={order} />
 
       <div className="card rise rise-2">
         <div className="card-header">

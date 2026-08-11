@@ -39,6 +39,7 @@ export const PAYMENTS = [
   { key: 'bit', label: 'ביט', icon: '📱' },
   { key: 'paybox', label: 'פייבוקס', icon: '💳' },
   { key: 'cash', label: 'מזומן', icon: '💵' },
+  { key: 'unpaid', label: 'עוד לא שולם', icon: '⏳' },
 ]
 
 export const payLabel = (key) => PAYMENTS.find((p) => p.key === key)?.label || key || ''

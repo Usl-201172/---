@@ -19,14 +19,13 @@ function OrderRow({ order, onOpen }) {
   return (
     <div className="list-row rise" onClick={() => onOpen(order.id)}>
       <div className={`list-avatar ${order.paymentMethod === 'bit' ? 'blue' : order.paymentMethod === 'paybox' ? 'violet' : 'amber'}`}>
-        {order.paymentMethod === 'bit' ? '📱' : order.paymentMethod === 'paybox' ? '💳' : '💵'}
+        {order.paymentMethod === 'bit' ? '📱' : order.paymentMethod === 'paybox' ? '💳' : order.paymentMethod === 'unpaid' ? '⏳' : '💵'}
       </div>
       <div className="list-main">
         <div className="list-title">{order.customerName || 'בלי שם'}</div>
         <div className="list-sub">{fmtTime(order.createdAt)}</div>
         <div className="list-badges">
-          {order.paid ? <span className="badge badge-green">שולם</span> : <span className="badge badge-red">חוב</span>}
-          {order.arrived ? <span className="badge badge-gray">הגיע</span> : null}
+          {order.paid ? <span className="badge badge-green">התשלום נלקח</span> : <span className="badge badge-red">חוב</span>}
         </div>
       </div>
       <div className="list-end">

@@ -102,11 +102,11 @@ function ItemRow({ item, onChange, onRemove }) {
   const tiers = item.tiers || []
 
   return (
-    <div className="card" style={{ marginBottom: 10 }}>
-      <div className="row" style={{ marginBottom: 8 }}>
-        <div className="grow" style={{ fontWeight: 700 }}>
+    <div className="order-item-card">
+      <div className="row" style={{ marginBottom: 10 }}>
+        <div className="grow" style={{ fontWeight: 800, fontSize: 16 }}>
           {item.isCustom ? (
-            <input className="input" value={item.name} onChange={setName} placeholder="שם הפריט" />
+            <input className="input" value={item.name} onChange={setName} placeholder="שם הפריט" style={{ fontWeight: 700 }} />
           ) : (
             <span>
               {item.name}
@@ -136,19 +136,19 @@ function ItemRow({ item, onChange, onRemove }) {
         </div>
       )}
 
-      <div className="input-row">
+      <div className="input-row" style={{ marginBottom: 4 }}>
         <div>
           <label className="label">כמות</label>
-          <input className="input" type="number" inputMode="decimal" step="1" min="1" value={item.qty} onChange={setQty} />
+          <input className="input" type="number" inputMode="decimal" step="1" min="1" value={item.qty} onChange={setQty} style={{ fontWeight: 800, fontSize: 16 }} />
         </div>
         <div>
           <label className="label">מחיר ליחידה</label>
-          <div style={{ fontSize: 17, fontWeight: 800, paddingTop: 8 }}>{fmtMoney(item.unitPrice)}</div>
+          <div style={{ fontSize: 20, fontWeight: 900, paddingTop: 8, color: 'var(--primary-dark)' }}>{fmtMoney(item.unitPrice)}</div>
         </div>
       </div>
-      <div className="total-row grand" style={{ marginTop: 6 }}>
-        <span>סה"כ</span>
-        <span>{fmtMoney(lineTotal)}</span>
+      <div className="total-row grand" style={{ marginTop: 8, paddingTop: 10, borderTopWidth: 2 }}>
+        <span style={{ fontSize: 16 }}>סה"כ</span>
+        <span style={{ fontSize: 20, color: 'var(--primary-dark)' }}>{fmtMoney(lineTotal)}</span>
       </div>
     </div>
   )
@@ -176,9 +176,8 @@ export default function NewOrder({ products, bundles, discountRules, editOrder, 
         isCustom: !it.productId && !it.bundleId,
       })) || [],
   )
-  const [payment, setPayment] = useState(editOrder?.paymentMethod || 'bit')
+  const [payment, setPayment] = useState(editOrder?.paymentMethod || 'unpaid')
   const [paid, setPaid] = useState(editOrder?.paid ?? false)
-  const [arrived, setArrived] = useState(editOrder?.arrived ?? false)
   const [notes, setNotes] = useState(editOrder?.notes || '')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -277,8 +276,7 @@ export default function NewOrder({ products, bundles, discountRules, editOrder, 
           items: cleanItems,
           total: Math.round(total * 100) / 100,
           paymentMethod: payment,
-          paid,
-          arrived,
+          paid: payment === 'unpaid' ? false : paid,
           notes: notes.trim(),
         },
         editOrder,
@@ -325,7 +323,7 @@ export default function NewOrder({ products, bundles, discountRules, editOrder, 
         </div>
       </FormSection>
 
-      <FormSection num={3} title="איך שולם?">
+      <FormSection num={3} title="צורת תשלום">
         <div className="chips">
           {PAYMENTS.map((p) => (
             <button key={p.key} type="button" className={`chip ${payment === p.key ? 'active' : ''}`} onClick={() => setPayment(p.key)}>
@@ -335,22 +333,18 @@ export default function NewOrder({ products, bundles, discountRules, editOrder, 
         </div>
       </FormSection>
 
-      <FormSection num={4} title="סטטוס והערות">
-        <div className="switch-row">
-          <span className="switch-label">שולם</span>
-          <label className="switch">
-            <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
-            <span className="slider" />
-          </label>
-        </div>
-        <div className="switch-row">
-          <span className="switch-label">הסחורה הגיעה</span>
-          <label className="switch">
-            <input type="checkbox" checked={arrived} onChange={(e) => setArrived(e.target.checked)} />
-            <span className="slider" />
-          </label>
-        </div>
+      <FormSection num={4} title="סטטוס">
+        {payment !== 'unpaid' && (
+          <div className="switch-row">
+            <span className="switch-label">התשלום נלקח</span>
+            <label className="switch">
+              <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
+              <span className="slider" />
+            </label>
+          </div>
+        )}
         <div className="field" style={{ marginBottom: 0, marginTop: 10 }}>
+          <label className="label">הערות</label>
           <textarea className="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="הערות חופשיות..." />
         </div>
       </FormSection>
