@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   runTransaction,
 } from 'firebase/firestore'
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -30,14 +30,24 @@ export const app = isConfigured ? initializeApp(firebaseConfig) : null
 export const db = app ? getFirestore(app) : null
 export const auth = app ? getAuth(app) : null
 
-export function signIn() {
+export function register(email, password) {
+  if (!auth) return Promise.reject(new Error('Firebase not configured'))
+  return createUserWithEmailAndPassword(auth, email, password)
+}
+
+export function login(email, password) {
+  if (!auth) return Promise.reject(new Error('Firebase not configured'))
+  return signInWithEmailAndPassword(auth, email, password)
+}
+
+export function logOut() {
   if (!auth) return Promise.resolve()
-  return signInAnonymously(auth).catch(() => {})
+  return signOut(auth)
 }
 
 export function onAuth(cb) {
   if (!auth) return () => {}
-  return onAuthStateChanged(auth, (user) => cb(Boolean(user)))
+  return onAuthStateChanged(auth, (user) => cb(user))
 }
 
 const productsCol = () => collection(db, 'products')

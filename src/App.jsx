@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   isConfigured,
-  signIn,
+  logOut,
   onAuth,
   watchProducts,
   watchOrders,
@@ -45,15 +45,13 @@ export default function App() {
   const [purchases, setPurchases] = useState(null)
   const [bundles, setBundles] = useState(null)
   const [discountRules, setDiscountRules] = useState(null)
-  const [gateOk, setGateOk] = useState(() => localStorage.getItem('gate_ok') === '1')
 
   useEffect(() => {
     if (!isConfigured) return
-    const unsubAuth = onAuth((ok) => {
-      setAuthed(ok)
-      if (ok) setAuthReady(true)
+    const unsubAuth = onAuth((user) => {
+      setAuthed(Boolean(user))
+      setAuthReady(true)
     })
-    signIn()
     return unsubAuth
   }, [])
 
@@ -82,16 +80,13 @@ export default function App() {
 
   const lock = () => {
     if (!window.confirm('בטוח שברצונך להתנתק?')) return
-    localStorage.removeItem('gate_ok')
-    setGateOk(false)
+    logOut()
     setRoute({ name: 'dashboard' })
   }
 
-  if (!gateOk) return <Gate onUnlock={() => setGateOk(true)} />
-
   if (!isConfigured) return <Setup />
 
-  if (!authReady || !authed) {
+  if (!authReady) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', gap: 16 }}>
         <div className="skeleton" style={{ width: 72, height: 72, borderRadius: 20 }} />
@@ -100,6 +95,8 @@ export default function App() {
       </div>
     )
   }
+
+  if (!authed) return <Gate />
 
   const loading = !products || !orders || !purchases || !bundles
 
