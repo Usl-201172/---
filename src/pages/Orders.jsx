@@ -1,10 +1,20 @@
 import { useMemo, useState } from 'react'
 import { fmtMoney, fmtDateTime, payLabel } from '../utils'
 
-function OrderRow({ order, onOpen }) {
+function OrderRow({ order, onOpen, query }) {
   const pay = order.paymentMethod
   const paid = order.paid ?? false
-  const itemCount = (order.items || []).length
+
+  let matchedQty = 0
+  if (query) {
+    const q = query.trim().toLowerCase()
+    for (const it of (order.items || [])) {
+      if ((it.name || '').toLowerCase().includes(q)) {
+        matchedQty += Number(it.qty) || 0
+      }
+    }
+  }
+
   return (
     <div className="list-row rise" onClick={() => onOpen(order.id)}>
       <div className={`list-avatar ${pay === 'bit' ? 'blue' : pay === 'paybox' ? 'violet' : 'amber'}`}>
@@ -21,7 +31,9 @@ function OrderRow({ order, onOpen }) {
           ) : (
             <span className="badge badge-red">חוב</span>
           )}
-          <span className="badge">{itemCount} יח</span>
+          {query && matchedQty > 0 && (
+            <span className="badge badge-violet">{matchedQty} × {query.trim()}</span>
+          )}
         </div>
       </div>
       <div className="list-end">
@@ -112,7 +124,7 @@ export default function Orders({ orders, products, bundles, onOpen }) {
       ) : (
         <div className="list">
           {filtered.map((o) => (
-            <OrderRow key={o.id} order={o} onOpen={onOpen} />
+            <OrderRow key={o.id} order={o} onOpen={onOpen} query={q} />
           ))}
         </div>
       )}
