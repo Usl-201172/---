@@ -20,6 +20,7 @@ const todayStr = new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 
 function OrderRow({ order, onOpen }) {
   const paid = order.paid ?? false
   const pay = order.paymentMethod
+  const itemCount = (order.items || []).reduce((s, it) => s + (Number(it.qty) || 0), 0)
   return (
     <div className="list-row rise" onClick={() => onOpen(order.id)}>
       <div className={`list-avatar ${pay === 'bit' ? 'blue' : pay === 'paybox' ? 'violet' : 'amber'}`}>
@@ -36,6 +37,7 @@ function OrderRow({ order, onOpen }) {
           ) : (
             <span className="badge badge-red">חוב</span>
           )}
+          <span className="badge">{itemCount} יח</span>
         </div>
       </div>
       <div className="list-end">
