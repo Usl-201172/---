@@ -94,6 +94,9 @@ function PaidOrdersView({ orders, onBack, onOpen }) {
 }
 
 function UnpaidOrdersView({ orders, onBack, onOpen }) {
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState(new Set())
+
   const unpaid = orders
     .filter((o) => !(o.paid ?? false) && o.paymentMethod !== 'unpaid')
     .sort((a, b) => {
@@ -101,6 +104,31 @@ function UnpaidOrdersView({ orders, onBack, onOpen }) {
       const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt)
       return db - da
     })
+
+  const toggleSelect = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    if (selected.size === unpaid.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(unpaid.map((o) => o.id)))
+    }
+  }
+
+  const shareSelected = () => {
+    const toShare = unpaid.filter((o) => selected.size === 0 || selected.has(o.id))
+    if (toShare.length === 0) return
+    shareText(formatOrdersSummary(toShare), 'סיכום הזמנות ממתינות')
+    setSelecting(false)
+    setSelected(new Set())
+  }
 
   const shareAll = () => {
     if (unpaid.length === 0) return
@@ -114,10 +142,25 @@ function UnpaidOrdersView({ orders, onBack, onOpen }) {
           <IconBack /> חזרה
         </button>
         <div style={{ fontWeight: 800, fontSize: 17, marginRight: 8, flex: 1 }}>הזמנות ממתינות ({unpaid.length})</div>
-        {unpaid.length > 0 && (
-          <button className="btn btn-primary" onClick={shareAll}>
-            <IconShare /> שתף הכל
-          </button>
+        {unpaid.length > 0 && !selecting && (
+          <>
+            <button className="btn btn-outline" onClick={() => setSelecting(true)}>
+              בחר
+            </button>
+            <button className="btn btn-primary" onClick={shareAll} style={{ marginInlineStart: 6 }}>
+              <IconShare /> שתף הכל
+            </button>
+          </>
+        )}
+        {selecting && (
+          <>
+            <button className="btn btn-outline" onClick={selectAll}>
+              {selected.size === unpaid.length ? 'בטל הכל' : 'בחר הכל'}
+            </button>
+            <button className="btn btn-ghost" onClick={() => { setSelecting(false); setSelected(new Set()) }}>
+              ביטול
+            </button>
+          </>
         )}
       </div>
       {unpaid.length === 0 ? (
@@ -130,20 +173,69 @@ function UnpaidOrdersView({ orders, onBack, onOpen }) {
         </div>
       ) : (
         <div className="list">
-          {unpaid.map((o) => (
-            <div key={o.id} className="list-row rise" onClick={() => onOpen(o.id)}>
-              <div className={`list-avatar ${o.paymentMethod === 'bit' ? 'blue' : 'violet'}`}>
-                {o.paymentMethod === 'bit' ? '📱' : '💳'}
+          {unpaid.map((o) => {
+            const isChecked = selected.has(o.id)
+            return (
+              <div
+                key={o.id}
+                className="list-row rise"
+                onClick={() => selecting ? toggleSelect(o.id) : onOpen(o.id)}
+                style={selecting && isChecked ? { background: 'var(--primary-bg, #eef2ff)', borderColor: 'var(--primary, #4f6ef7)' } : undefined}
+              >
+                {selecting && (
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 6,
+                      border: isChecked ? '2px solid var(--primary, #4f6ef7)' : '2px solid #ccc',
+                      background: isChecked ? 'var(--primary, #4f6ef7)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginInlineEnd: 10,
+                      flexShrink: 0,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {isChecked && <span style={{ color: '#fff', fontSize: 14, fontWeight: 900 }}>✓</span>}
+                  </div>
+                )}
+                <div className={`list-avatar ${o.paymentMethod === 'bit' ? 'blue' : 'violet'}`}>
+                  {o.paymentMethod === 'bit' ? '📱' : '💳'}
+                </div>
+                <div className="list-main">
+                  <div className="list-title">{o.customerName || 'בלי שם'}</div>
+                  <div className="list-sub">{fmtRelative(o.createdAt)} · {payLabel(o.paymentMethod)}</div>
+                </div>
+                <div className="list-end">
+                  <div className="list-price">{fmtMoney(o.total)}</div>
+                </div>
               </div>
-              <div className="list-main">
-                <div className="list-title">{o.customerName || 'בלי שם'}</div>
-                <div className="list-sub">{fmtRelative(o.createdAt)} · {payLabel(o.paymentMethod)}</div>
-              </div>
-              <div className="list-end">
-                <div className="list-price">{fmtMoney(o.total)}</div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
+        </div>
+      )}
+      {selecting && selected.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: 80,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 40,
+        }}>
+          <button className="btn btn-primary" onClick={shareSelected} style={{
+            padding: '14px 28px',
+            borderRadius: 16,
+            fontSize: 16,
+            fontWeight: 800,
+            boxShadow: '0 6px 20px rgba(79, 110, 247, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <IconShare /> שתף ({selected.size})
+          </button>
         </div>
       )}
     </>
