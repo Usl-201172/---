@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { fmtMoney, payLabel } from '../utils'
+import { fmtMoney, fmtDateTime, payLabel } from '../utils'
 
 function OrderRow({ order, onOpen }) {
   const pay = order.paymentMethod
@@ -11,7 +11,7 @@ function OrderRow({ order, onOpen }) {
       </div>
       <div className="list-main">
         <div className="list-title">{order.customerName || 'בלי שם'}</div>
-        <div className="list-sub">{fmtTime(order.createdAt)} · {payLabel(pay)}</div>
+        <div className="list-sub">{fmtDateTime(order.createdAt)} · {payLabel(pay)}</div>
         <div className="list-badges">
           {paid ? (
             <span className="badge badge-green">התשלום נלקח</span>
