@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
   isConfigured,
-  logOut,
   onAuth,
   watchProducts,
   watchOrders,
@@ -9,8 +8,11 @@ import {
   watchBundles,
   watchDiscountRules,
   updateBundlesCache,
+  watchSettings,
+  createDefaultSettings,
+  isStoreMember,
 } from './firebase'
-import { IconPlus, IconHome, IconOrders, IconProducts, IconWarehouse } from './components/icons'
+import { IconPlus, IconHome, IconOrders, IconProducts, IconWarehouse, IconUser } from './components/icons'
 import Dashboard from './pages/Dashboard'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
@@ -19,6 +21,8 @@ import Products from './pages/Products'
 import Setup from './pages/Setup'
 import Gate from './components/Gate'
 import Warehouse from './pages/Warehouse'
+import Account from './pages/Account'
+import JoinStore from './pages/JoinStore'
 
 const TITLES = {
   dashboard: ['החנות שלי', 'פירות וירקות'],
@@ -27,6 +31,7 @@ const TITLES = {
   warehouse: ['מחסן', 'רכישות ועלויות'],
   newOrder: ['הזמנה חדשה', ''],
   order: ['פרטי הזמנה', ''],
+  account: ['החשבון שלי', ''],
 }
 
 const NAV = [
@@ -34,6 +39,7 @@ const NAV = [
   { key: 'orders', label: 'הזמנות', icon: IconOrders },
   { key: 'warehouse', label: 'מחסן', icon: IconWarehouse },
   { key: 'products', label: 'מוצרים', icon: IconProducts },
+  { key: 'account', label: 'חשבון', icon: IconUser },
 ]
 
 export default function App() {
@@ -45,18 +51,37 @@ export default function App() {
   const [purchases, setPurchases] = useState(null)
   const [bundles, setBundles] = useState(null)
   const [discountRules, setDiscountRules] = useState(null)
+  const [settings, setSettings] = useState(null)
+  const [uid, setUid] = useState(null)
 
   useEffect(() => {
     if (!isConfigured) return
     const unsubAuth = onAuth((user) => {
       setAuthed(Boolean(user))
+      setUid(user?.uid || null)
       setAuthReady(true)
     })
     return unsubAuth
   }, [])
 
   useEffect(() => {
-    if (!isConfigured || !authed) return
+    if (!isConfigured || !authed || !uid) return
+    const unsub = watchSettings((s) => {
+      if (s) setSettings(s)
+      else createDefaultSettings(uid).then(setSettings).catch(console.error)
+    })
+    return unsub
+  }, [authed, uid])
+
+  useEffect(() => {
+    document.title = `${settings?.shopName || 'החנות שלי'} - פירות וירקות`
+  }, [settings?.shopName])
+
+  // רק חברים בחנות (בעלים או מצורפים בקוד) רואים את נתוני החנות
+  const isMember = isStoreMember(settings, uid)
+
+  useEffect(() => {
+    if (!isConfigured || !authed || !isMember) return
     const unsubP = watchProducts(setProducts)
     const unsubO = watchOrders(setOrders)
     const unsubPr = watchPurchases(setPurchases)
@@ -69,7 +94,7 @@ export default function App() {
       unsubB()
       unsubDR()
     }
-  }, [authed])
+  }, [authed, isMember])
 
   const navigate = (r) => {
     setRoute(r)
@@ -77,12 +102,6 @@ export default function App() {
   }
 
   const currentNav = route.name === 'order' ? 'orders' : route.name === 'newOrder' ? 'dashboard' : route.name
-
-  const lock = () => {
-    if (!window.confirm('בטוח שברצונך להתנתק?')) return
-    logOut()
-    setRoute({ name: 'dashboard' })
-  }
 
   if (!isConfigured) return <Setup />
 
@@ -101,6 +120,10 @@ export default function App() {
   const loading = !products || !orders || !purchases || !bundles
 
   const renderPage = () => {
+    // חשבון שלא מחובר לאף חנות — לא מקבל את נתוני החנות
+    if (settings && !isMember) {
+      return <JoinStore />
+    }
     if (loading) {
       return (
         <div style={{ padding: '0 12px' }}>
@@ -141,25 +164,29 @@ export default function App() {
         return <Products products={products} bundles={bundles} discountRules={discountRules} />
       case 'warehouse':
         return <Warehouse products={products} purchases={purchases} />
+      case 'account':
+        return (
+          <Account
+            settings={settings}
+            uid={uid}
+            onSettings={setSettings}
+            onBack={() => navigate({ name: 'dashboard' })}
+          />
+        )
       default:
         return (
           <>
             <header className="dashboard-header">
-              <div className="dashboard-header-left">
-                <div className="avatar-circle">פ</div>
-                <div>
-                  <div className="topbar-title">החנות שלי</div>
-                  <div className="topbar-sub">פירות וירקות</div>
-                </div>
+              <div>
+                <div className="topbar-title">{settings?.shopName || 'החנות שלי'}</div>
+                <div className="topbar-sub">פירות וירקות</div>
               </div>
-              <button className="topbar-icon-btn" title="חיפוש">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-              </button>
             </header>
-            <Dashboard orders={orders} products={products} onOpen={openDashboard} onLock={lock} />
+            <Dashboard
+              orders={orders}
+              products={products}
+              onOpen={openDashboard}
+            />
           </>
         )
     }
@@ -180,12 +207,6 @@ export default function App() {
             <div className="topbar-title">{title}</div>
             {sub && <div className="topbar-sub">{sub}</div>}
           </div>
-          <button className="topbar-icon-btn" onClick={lock} title="התנתקות">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-          </button>
         </header>
       )}
 

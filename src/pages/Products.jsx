@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { addProduct, updateProduct, deleteProduct, addBundle, updateBundle, deleteBundle, addDiscountRule, updateDiscountRule, deleteDiscountRule } from '../firebase'
+import { addProduct, updateProduct, deleteProduct, syncProductInOrders, addBundle, updateBundle, deleteBundle, addDiscountRule, updateDiscountRule, deleteDiscountRule } from '../firebase'
 import { fmtMoney } from '../utils'
 import { IconPlus, IconTrash, IconEdit, IconX } from '../components/icons'
 
@@ -59,8 +59,13 @@ function ProductModal({ product, onClose, onSaved }) {
         stock: Number(form.stock || 0),
         tiers: validTiers.map((t) => ({ qty: Number(t.qty), price: Number(t.price) })),
       }
-      if (product) await updateProduct(product.id, data)
-      else await addProduct(data)
+      if (product) {
+        await updateProduct(product.id, data)
+        // מעדכן גם את ההזמנות הלא מאושרות שכוללות את המוצר הזה
+        await syncProductInOrders(product.id, data)
+      } else {
+        await addProduct(data)
+      }
       onSaved()
     } catch {
       setError('שגיאה בשמירה, נסה שוב')

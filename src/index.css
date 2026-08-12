@@ -262,18 +262,6 @@ p {
   margin-top: 1px;
 }
 
-.hero-lock {
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-  padding: 7px 9px;
-  font-size: 15px;
-  transition: background 0.15s;
-}
-
-.hero-lock:active {
-  background: rgba(255, 255, 255, 0.3);
-}
-
 .hero-revenue-label {
   font-size: 13px;
   opacity: 0.9;

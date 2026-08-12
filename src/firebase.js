@@ -7,13 +7,25 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
+  getDoc,
+  setDoc,
   query,
   orderBy,
   limit,
   serverTimestamp,
   runTransaction,
 } from 'firebase/firestore'
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+} from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -76,6 +88,46 @@ export async function addProduct(data) {
 
 export async function updateProduct(id, data) {
   return updateDoc(doc(productsCol(), id), data)
+}
+
+// מסנכרן שינויי מוצר (מחיר, שם, משקל, מעקב מלאי...) לתוך כל ההזמנות הלא מאושרות שמכילות אותו
+export async function syncProductInOrders(productId, data) {
+  const snap = await getDocs(ordersCol())
+  const tasks = []
+  for (const d of snap.docs) {
+    const order = { id: d.id, ...d.data() }
+    if (order.paid ?? false) continue // רק הזמנות שהתשלום עבורן לא התקבל
+    const items = order.items || []
+    let changed = false
+    const newItems = items.map((it) => {
+      if (it.isBundle || it.isCustom || it.productId !== productId) return it
+      changed = true
+      const tiers = data.tiers || []
+      // בוחרים את המחיר לפי הכמות שהוזמנה (או לפי הטיר הקודם, או הראשון)
+      const selectedTier =
+        tiers.find((t) => t.qty === it.qty) ||
+        tiers.find((t) => t.qty === it.selectedTier?.qty) ||
+        tiers[0] ||
+        null
+      return {
+        ...it,
+        name: data.name ?? it.name,
+        // פריט במבצע נשאר במחיר המבצע
+        unitPrice: it.discounted ? it.unitPrice : selectedTier?.price ?? it.unitPrice,
+        selectedTier,
+        tiers,
+        tracksStock: data.trackStock !== false,
+        unitWeight: data.unitWeight ?? null,
+      }
+    })
+    if (!changed) continue
+    const total =
+      Math.round(
+        newItems.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0) * 100,
+      ) / 100
+    tasks.push(updateDoc(doc(ordersCol(), order.id), { items: newItems, total }))
+  }
+  await Promise.all(tasks)
 }
 
 export async function deleteProduct(id) {
@@ -249,6 +301,75 @@ export function watchDiscountRules(cb) {
   return onSnapshot(q, (snap) =>
     cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
   )
+}
+
+// ---------- הגדרות חנות / חשבון ----------
+
+export const settingsDocRef = () => doc(db, 'settings', 'shop')
+
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+export function generateShareCode(len = 6) {
+  let out = ''
+  const arr = new Uint32Array(len)
+  crypto.getRandomValues(arr)
+  for (let i = 0; i < len; i++) out += CODE_CHARS[arr[i] % CODE_CHARS.length]
+  return out
+}
+
+export function watchSettings(cb) {
+  return onSnapshot(settingsDocRef(), (d) => cb(d.exists() ? { id: d.id, ...d.data() } : null))
+}
+
+// יוצר מסמך הגדרות בפעם הראשונה שהבעלים נכנס
+export async function createDefaultSettings(uid) {
+  const snap = await getDoc(settingsDocRef())
+  if (snap.exists()) return snap.data()
+  const data = {
+    shopName: 'החנות שלי',
+    ownerName: '',
+    shareCode: generateShareCode(),
+    ownerUid: uid,
+    members: [uid],
+    createdAt: serverTimestamp(),
+  }
+  await setDoc(settingsDocRef(), data)
+  return data
+}
+
+export function saveSettings(data) {
+  return setDoc(settingsDocRef(), sanitize(data), { merge: true })
+}
+
+export async function changePassword(current, next) {
+  const user = auth.currentUser
+  if (!user) throw new Error('לא מחובר')
+  const cred = EmailAuthProvider.credential(user.email, current)
+  await reauthenticateWithCredential(user, cred)
+  await updatePassword(user, next)
+}
+
+// מצרף את המשתמש המחובר לחנות לפי הקוד האישי
+export async function joinStoreWithCode(code) {
+  const user = auth.currentUser
+  if (!user) throw new Error('לא מחובר')
+  const snap = await getDoc(settingsDocRef())
+  if (!snap.exists()) throw new Error('לא נמצאה חנות משותפת')
+  const data = snap.data()
+  const expected = String(data.shareCode || '').trim().toUpperCase()
+  const entered = String(code || '').trim().toUpperCase()
+  if (!expected || entered !== expected) throw new Error('הקוד שגוי')
+  const members = Array.isArray(data.members) ? data.members : [data.ownerUid].filter(Boolean)
+  if (data.ownerUid === user.uid || members.includes(user.uid)) {
+    throw new Error('אתה כבר נוכח בחנות זו')
+  }
+  members.push(user.uid)
+  await setDoc(settingsDocRef(), { members }, { merge: true })
+  return data
+}
+
+export function isStoreMember(store, uid) {
+  if (!store || !uid) return false
+  return store.ownerUid === uid || (Array.isArray(store.members) && store.members.includes(uid))
 }
 
 export async function addDiscountRule(data) {

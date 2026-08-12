@@ -125,14 +125,14 @@ function UnpaidOrdersView({ orders, onBack, onOpen }) {
   const shareSelected = () => {
     const toShare = unpaid.filter((o) => selected.size === 0 || selected.has(o.id))
     if (toShare.length === 0) return
-    shareText(formatOrdersSummary(toShare), 'סיכום הזמנות ממתינות')
+    shareText(formatOrdersSummary(toShare))
     setSelecting(false)
     setSelected(new Set())
   }
 
   const shareAll = () => {
     if (unpaid.length === 0) return
-    shareText(formatOrdersSummary(unpaid), 'סיכום הזמנות ממתינות')
+    shareText(formatOrdersSummary(unpaid))
   }
 
   return (
@@ -242,7 +242,7 @@ function UnpaidOrdersView({ orders, onBack, onOpen }) {
   )
 }
 
-export default function Dashboard({ orders, products, onOpen, onLock }) {
+export default function Dashboard({ orders, products, onOpen }) {
   const [showPaid, setShowPaid] = useState(false)
   const [showUnpaid, setShowUnpaid] = useState(false)
 
@@ -272,7 +272,6 @@ export default function Dashboard({ orders, products, onOpen, onLock }) {
             <div className="hero-greet">{greeting()}! 🌿</div>
             <div className="hero-date">{todayStr}</div>
           </div>
-          <button className="hero-lock" onClick={onLock} title="התנתקות">🚪</button>
         </div>
       </section>
 

@@ -8,7 +8,7 @@ export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
 
   const togglePaid = () => patchOrder(order.id, { paid: !order.paid })
 
-  const shareOrder = () => shareText(formatOrderText(order), `הזמנה — ${order.customerName || 'בלי שם'}`)
+  const shareOrder = () => shareText(formatOrderText(order))
 
   const confirmDelete = async () => {
     if (!window.confirm('למחוק את ההזמנה הזו? המלאי יוחזר.')) return
@@ -69,6 +69,11 @@ export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
                 <span className="small muted" style={{ display: 'block' }}>
                   {fmtMoney(it.unitPrice)} ליחידה
                 </span>
+                {it.unitWeight ? (
+                  <span className="small muted" style={{ display: 'block' }}>
+                    ⚖️ {it.unitWeight} ק"ג ליחידה
+                  </span>
+                ) : null}
               </div>
               <div className="order-item-price">{fmtMoney(lineTotal)}</div>
             </div>

@@ -10,7 +10,8 @@ export function formatOrderText(order) {
   for (const it of (order.items || [])) {
     const qty = Number(it.qty) || 0
     const price = Number(it.unitPrice) || 0
-    lines.push(`• ${it.name}  ×${qty}  ${fmtMoney(price)}`)
+    const weight = it.unitWeight ? ` (${it.unitWeight} ק"ג)` : ''
+    lines.push(`• ${it.name}  ×${qty}${weight}  ${fmtMoney(price)}`)
   }
   lines.push('')
   lines.push(`💰 *סה"כ: ${fmtMoney(order.total)}*`)
@@ -19,27 +20,37 @@ export function formatOrderText(order) {
 }
 
 export function formatOrdersSummary(orders) {
-  const lines = []
-  lines.push(`📋 *סיכום הזמנות (${orders.length})*`)
-  lines.push('')
-  let total = 0
-  for (const o of orders) {
-    const t = Number(o.total) || 0
-    total += t
-    lines.push(`• ${o.customerName || 'בלי שם'} — ${fmtMoney(t)}`)
-  }
-  lines.push('')
-  lines.push(`💰 *סה"כ: ${fmtMoney(total)}*`)
-  return lines.join('\n')
+  const blocks = orders.map(formatOrderText)
+  const total = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  return [
+    `📋 *סיכום הזמנות (${orders.length})*`,
+    '',
+    blocks.join('\n──────────────\n'),
+    '',
+    `💰 *סה"כ: ${fmtMoney(total)}*`,
+  ].join('\n')
 }
 
-export async function shareText(text, title) {
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, text })
-      return
-    } catch { /* user cancelled */ }
+export function formatQuantitiesSummary(orders) {
+  const map = new Map()
+  let included = 0
+  for (const o of orders) {
+    // רק הזמנות שהתשלום עבורן לא התקבל — אחרת יוצא כמות למי שכבר נשלח
+    if (o.paid ?? false) continue
+    included++
+    for (const it of (o.items || [])) {
+      if (!it.name) continue
+      map.set(it.name, (map.get(it.name) || 0) + (Number(it.qty) || 0))
+    }
   }
+  if (included === 0) return '📦 *הוצאת כמויות*\n\nאין הזמנות שהתשלום עבורן לא התקבל'
+  const lines = [...map.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'he'))
+    .map(([name, qty]) => `• ${name} ×${qty}`)
+  return [`📦 *הוצאת כמויות (${included} הזמנות)*`, '', ...lines].join('\n')
+}
+
+export function shareText(text) {
   const encoded = encodeURIComponent(text)
   window.open(`https://wa.me/?text=${encoded}`, '_blank')
 }
