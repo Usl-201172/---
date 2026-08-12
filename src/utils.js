@@ -92,6 +92,27 @@ const PRODUCE_EMOJI = {
   'potatoes': '🥔', 'carrots': '🥕',
 }
 
+export function fmtRelative(ts) {
+  if (!ts) return ''
+  const d = ts?.toDate ? ts.toDate() : new Date(ts)
+  const now = new Date()
+  const diffMs = now - d
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffH = Math.floor(diffMin / 60)
+  const diffD = Math.floor(diffH / 24)
+  const diffW = Math.floor(diffD / 7)
+  const diffM = Math.floor(diffD / 30)
+
+  if (diffMin < 1) return 'הרגע'
+  if (diffMin < 60) return `לפני ${diffMin} דקות`
+  if (diffH < 24) return `לפני ${diffH} שעות`
+  if (diffD === 1) return 'אתמול'
+  if (diffD < 7) return `לפני ${diffD} ימים`
+  if (diffW < 5) return `לפני ${diffW} שבועות`
+  return `לפני ${diffM} חודשים`
+}
+
 export function guessEmoji(name, category) {
   if (!name) return category === 'פירות' ? '🍎' : category === 'ירקות' ? '🥦' : '📦'
   const n = name.trim().toLowerCase()

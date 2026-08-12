@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { fmtMoney, fmtDateTime, payLabel } from '../utils'
+import { fmtMoney, payLabel } from '../utils'
 
 function OrderRow({ order, onOpen }) {
   const pay = order.paymentMethod

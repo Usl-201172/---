@@ -1,4 +1,6 @@
-import { fmtMoney } from '../utils'
+import { useState } from 'react'
+import { fmtMoney, fmtRelative } from '../utils'
+import { IconBack } from '../components/icons'
 
 function fmtTime(ts) {
   if (!ts) return ''
@@ -43,7 +45,59 @@ function OrderRow({ order, onOpen }) {
   )
 }
 
+function PaidOrdersView({ orders, onBack, onOpen }) {
+  const paid = orders
+    .filter((o) => o.paid ?? false)
+    .sort((a, b) => {
+      const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt)
+      const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt)
+      return db - da
+    })
+
+  return (
+    <>
+      <div style={{ padding: '0 14px', marginBottom: 12 }} className="row">
+        <button className="btn btn-ghost" onClick={onBack}>
+          <IconBack /> חזרה
+        </button>
+        <div style={{ fontWeight: 800, fontSize: 17, marginRight: 8 }}>כל ההזמנות שאושרו ({paid.length})</div>
+      </div>
+      {paid.length === 0 ? (
+        <div className="card">
+          <div className="empty">
+            <span className="empty-icon">📋</span>
+            <div className="empty-title">אין הזמנות שאושרו</div>
+          </div>
+        </div>
+      ) : (
+        <div className="list">
+          {paid.map((o) => (
+            <div key={o.id} className="list-row rise" onClick={() => onOpen(o.id)}>
+              <div className={`list-avatar ${o.paymentMethod === 'bit' ? 'blue' : o.paymentMethod === 'paybox' ? 'violet' : 'amber'}`}>
+                {o.paymentMethod === 'bit' ? '📱' : o.paymentMethod === 'paybox' ? '💳' : '💵'}
+              </div>
+              <div className="list-main">
+                <div className="list-title">{o.customerName || 'בלי שם'}</div>
+                <div className="list-sub">אושרה {fmtRelative(o.createdAt)}</div>
+              </div>
+              <div className="list-end">
+                <div className="list-price">{fmtMoney(o.total)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function Dashboard({ orders, products, onOpen, onLock }) {
+  const [showPaid, setShowPaid] = useState(false)
+
+  if (showPaid) {
+    return <PaidOrdersView orders={orders} onBack={() => setShowPaid(false)} onOpen={onOpen} />
+  }
+
   const allPaid = orders.filter((o) => o.paid ?? false)
   const totalRevenue = allPaid.reduce((s, o) => s + (Number(o.total) || 0), 0)
   const allUnpaid = orders.filter((o) => !(o.paid ?? false))
@@ -73,7 +127,7 @@ export default function Dashboard({ orders, products, onOpen, onLock }) {
           <div className="stat-card-value">{fmtMoney(totalRevenue)}</div>
           <div className="stat-card-sub">כולל הזמנות ששולמו</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" onClick={() => setShowPaid(true)} style={{ cursor: 'pointer' }}>
           <div className="stat-card-label">שולמו</div>
           <div className="stat-card-value">{allPaid.length}</div>
           <div className="stat-card-sub">הזמנות</div>
