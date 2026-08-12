@@ -112,10 +112,10 @@ export default function App() {
     }
     switch (route.name) {
       case 'orders':
-        return <Orders orders={orders} onOpen={(id) => navigate({ name: 'order', id })} />
+        return <Orders orders={orders} products={products} bundles={bundles} onOpen={(id) => navigate({ name: 'order', id })} />
       case 'order': {
         const order = orders.find((o) => o.id === route.id)
-        if (!order) return <Orders orders={orders} onOpen={(id) => navigate({ name: 'order', id })} />
+        if (!order) return <Orders orders={orders} products={products} bundles={bundles} onOpen={(id) => navigate({ name: 'order', id })} />
         return (
           <OrderDetail
             order={order}

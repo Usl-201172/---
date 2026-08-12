@@ -34,7 +34,7 @@ const TABS = [
   { key: 'today', label: 'היום' },
 ]
 
-export default function Orders({ orders, onOpen }) {
+export default function Orders({ orders, products, bundles, onOpen }) {
   const [tab, setTab] = useState('all')
   const [q, setQ] = useState('')
 
@@ -50,9 +50,40 @@ export default function Orders({ orders, onOpen }) {
           d.getFullYear() === now.getFullYear()
         )
       })
-    if (q.trim()) list = list.filter((o) => (o.customerName || '').includes(q.trim()))
+    if (q.trim()) {
+      const query = q.trim()
+      const matchingProductIds = new Set()
+      const matchingBundleIds = new Set()
+
+      for (const p of (products || [])) {
+        if (p.name && p.name.includes(query)) {
+          matchingProductIds.add(p.id)
+        }
+      }
+
+      for (const b of (bundles || [])) {
+        if (b.name && b.name.includes(query)) {
+          matchingBundleIds.add(b.id)
+        }
+        for (const bi of (b.items || [])) {
+          if (bi.productId && matchingProductIds.has(bi.productId)) {
+            matchingBundleIds.add(b.id)
+          }
+        }
+      }
+
+      list = list.filter((o) => {
+        if ((o.customerName || '').includes(query)) return true
+        for (const it of (o.items || [])) {
+          if (it.name && it.name.includes(query)) return true
+          if (it.productId && matchingProductIds.has(it.productId)) return true
+          if (it.bundleId && matchingBundleIds.has(it.bundleId)) return true
+        }
+        return false
+      })
+    }
     return list
-  }, [orders, tab, q])
+  }, [orders, products, bundles, tab, q])
 
   return (
     <>
@@ -65,7 +96,7 @@ export default function Orders({ orders, onOpen }) {
       </div>
 
       <div style={{ padding: '0 14px', marginBottom: 12 }}>
-        <input className="input" placeholder="🔍 חיפוש לפי שם לקוח..." value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="input" placeholder="🔍 חיפוש לפי שם לקוח או מוצר..." value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
       {filtered.length === 0 ? (
