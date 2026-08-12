@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { patchOrder, deleteOrder } from '../firebase'
-import { fmtMoney, fmtQty, fmtDateTime, payLabel } from '../utils'
+import { fmtMoney, fmtQty, fmtDateTime } from '../utils'
 import { IconBack, IconEdit, IconTrash } from '../components/icons'
 
 export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
@@ -19,7 +19,13 @@ export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
     }
   }
 
-  const payIcon = order.paymentMethod === 'bit' ? '📱' : order.paymentMethod === 'paybox' ? '💳' : order.paymentMethod === 'unpaid' ? '⏳' : '💵'
+  const payBadgeClass = order.paid ?? false
+    ? 'badge-green'
+    : order.paymentMethod === 'unpaid'
+      ? 'badge-gray'
+      : 'badge-red'
+
+  const payMethodIcon = order.paymentMethod === 'bit' ? '📱' : order.paymentMethod === 'paybox' ? '💳' : order.paymentMethod === 'unpaid' ? '⏳' : '💵'
 
   return (
     <>
@@ -31,16 +37,14 @@ export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
         <div className="detail-hero-total">{fmtMoney(order.total)}</div>
         <div className="detail-hero-meta">
           <span className="badge">{fmtDateTime(order.createdAt)}</span>
-          {order.paymentMethod !== 'unpaid' && (
-            <span className="badge">
-              {payIcon} {payLabel(order.paymentMethod)}
-            </span>
-          )}
+          <span className="badge pay-method-badge">
+            {payMethodIcon} {order.paymentMethod || ''}
+          </span>
           <button
-            className={`badge ${order.paid ? 'badge-green' : 'badge-red'}`}
+            className={payBadgeClass}
             onClick={togglePaid}
-            style={{ border: 'none', cursor: 'pointer' }}
-            title="לחץ לשינוי סטטוס"
+            style={{ border: 'none', cursor: order.paymentMethod === 'unpaid' ? 'not-allowed' : 'pointer' }}
+            title={order.paymentMethod === 'unpaid' ? 'סטטוס קבוע - הזמנה בחוב' : 'לחץ לשינוי סטטוס'}
           >
             {order.paid ? '✓ התשלום נלקח' : 'חוב'}
           </button>

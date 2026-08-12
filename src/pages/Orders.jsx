@@ -3,6 +3,7 @@ import { fmtMoney, fmtDateTime, payLabel } from '../utils'
 
 function OrderRow({ order, onOpen }) {
   const pay = order.paymentMethod
+  const paid = order.paid ?? false
   return (
     <div className="list-row rise" onClick={() => onOpen(order.id)}>
       <div className={`list-avatar ${pay === 'bit' ? 'blue' : pay === 'paybox' ? 'violet' : 'amber'}`}>
@@ -10,10 +11,12 @@ function OrderRow({ order, onOpen }) {
       </div>
       <div className="list-main">
         <div className="list-title">{order.customerName || 'בלי שם'}</div>
-        <div className="list-sub">{fmtDateTime(order.createdAt)} · {payLabel(pay)}</div>
+        <div className="list-sub">{fmtTime(order.createdAt)} · {payLabel(pay)}</div>
         <div className="list-badges">
-          {order.paid ? (
+          {paid ? (
             <span className="badge badge-green">התשלום נלקח</span>
+          ) : order.paymentMethod === 'unpaid' ? (
+            <span className="badge badge-gray">לא שולם</span>
           ) : (
             <span className="badge badge-red">חוב</span>
           )}

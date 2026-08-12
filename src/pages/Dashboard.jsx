@@ -16,16 +16,24 @@ function greeting() {
 const todayStr = new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })
 
 function OrderRow({ order, onOpen }) {
+  const paid = order.paid ?? false
+  const pay = order.paymentMethod
   return (
     <div className="list-row rise" onClick={() => onOpen(order.id)}>
-      <div className={`list-avatar ${order.paymentMethod === 'bit' ? 'blue' : order.paymentMethod === 'paybox' ? 'violet' : 'amber'}`}>
-        {order.paymentMethod === 'bit' ? '📱' : order.paymentMethod === 'paybox' ? '💳' : order.paymentMethod === 'unpaid' ? '⏳' : '💵'}
+      <div className={`list-avatar ${pay === 'bit' ? 'blue' : pay === 'paybox' ? 'violet' : 'amber'}`}>
+        {pay === 'bit' ? '📱' : pay === 'paybox' ? '💳' : pay === 'unpaid' ? '⏳' : '💵'}
       </div>
       <div className="list-main">
         <div className="list-title">{order.customerName || 'בלי שם'}</div>
         <div className="list-sub">{fmtTime(order.createdAt)}</div>
         <div className="list-badges">
-          {order.paid ? <span className="badge badge-green">התשלום נלקח</span> : <span className="badge badge-red">חוב</span>}
+          {paid ? (
+            <span className="badge badge-green">התשלום נלקח</span>
+          ) : order.paymentMethod === 'unpaid' ? (
+            <span className="badge badge-gray">לא שולם</span>
+          ) : (
+            <span className="badge badge-red">חוב</span>
+          )}
         </div>
       </div>
       <div className="list-end">
@@ -37,7 +45,7 @@ function OrderRow({ order, onOpen }) {
 
 export default function Dashboard({ orders, products, onOpen, onLock }) {
   const todayOrders = orders.filter((o) => isToday(o.createdAt))
-  const todayPaidOrders = todayOrders.filter((o) => o.paid)
+  const todayPaidOrders = todayOrders.filter((o) => o.paid ?? false)
   const todayRevenue = todayPaidOrders.reduce((s, o) => s + (Number(o.total) || 0), 0)
   const unpaidToday = todayOrders.filter((o) => !o.paid)
 
