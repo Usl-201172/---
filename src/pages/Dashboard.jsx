@@ -1,4 +1,4 @@
-import { fmtMoney, isToday } from '../utils'
+import { fmtMoney } from '../utils'
 
 function fmtTime(ts) {
   if (!ts) return ''
@@ -44,10 +44,9 @@ function OrderRow({ order, onOpen }) {
 }
 
 export default function Dashboard({ orders, products, onOpen, onLock }) {
-  const todayOrders = orders.filter((o) => isToday(o.createdAt))
-  const todayPaidOrders = todayOrders.filter((o) => o.paid ?? false)
-  const todayRevenue = todayPaidOrders.reduce((s, o) => s + (Number(o.total) || 0), 0)
-  const unpaidToday = todayOrders.filter((o) => !o.paid)
+  const allPaid = orders.filter((o) => o.paid ?? false)
+  const totalRevenue = allPaid.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  const allUnpaid = orders.filter((o) => !(o.paid ?? false))
 
   const lowStock = products
     .filter((p) => p.active && p.trackStock && Number(p.stock) <= 2)
@@ -70,18 +69,18 @@ export default function Dashboard({ orders, products, onOpen, onLock }) {
 
       <div className="stats-grid rise rise-1">
         <div className="stat-card primary">
-          <div className="stat-card-label">הכנסות היום</div>
-          <div className="stat-card-value">{fmtMoney(todayRevenue)}</div>
-          <div className="stat-card-sub">today</div>
+          <div className="stat-card-label">הכנסות</div>
+          <div className="stat-card-value">{fmtMoney(totalRevenue)}</div>
+          <div className="stat-card-sub">כולל הזמנות ששולמו</div>
         </div>
         <div className="stat-card">
           <div className="stat-card-label">שולמו</div>
-          <div className="stat-card-value">{todayPaidOrders.length}</div>
+          <div className="stat-card-value">{allPaid.length}</div>
           <div className="stat-card-sub">הזמנות</div>
         </div>
         <div className="stat-card">
           <div className="stat-card-label">ממתינות</div>
-          <div className="stat-card-value">{unpaidToday.length}</div>
+          <div className="stat-card-value">{allUnpaid.length}</div>
           <div className="stat-card-sub">ללא תשלום</div>
         </div>
         <div className="stat-card">
