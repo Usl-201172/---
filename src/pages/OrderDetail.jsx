@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { patchOrder, deleteOrder } from '../firebase'
-import { fmtMoney, fmtQty, fmtDateTime } from '../utils'
-import { IconBack, IconEdit, IconTrash } from '../components/icons'
+import { fmtMoney, fmtQty, fmtDateTime, formatOrderText, shareText } from '../utils'
+import { IconBack, IconEdit, IconTrash, IconShare } from '../components/icons'
 
 export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
   const [deleting, setDeleting] = useState(false)
 
   const togglePaid = () => patchOrder(order.id, { paid: !order.paid })
+
+  const shareOrder = () => shareText(formatOrderText(order), `הזמנה — ${order.customerName || 'בלי שם'}`)
 
   const confirmDelete = async () => {
     if (!window.confirm('למחוק את ההזמנה הזו? המלאי יוחזר.')) return
@@ -88,6 +90,9 @@ export default function OrderDetail({ order, onBack, onEdit, onDelete }) {
       <div style={{ padding: '0 14px', marginBottom: 12 }} className="row">
         <button className="btn btn-ghost grow" onClick={onEdit}>
           <IconEdit /> ערוך
+        </button>
+        <button className="btn btn-outline grow" onClick={shareOrder}>
+          <IconShare /> שתף
         </button>
         <button className="btn btn-danger grow" onClick={confirmDelete} disabled={deleting}>
           <IconTrash /> {deleting ? 'מוחק...' : 'מחק'}

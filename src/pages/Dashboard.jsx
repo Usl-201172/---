@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { fmtMoney, fmtRelative } from '../utils'
-import { IconBack } from '../components/icons'
+import { fmtMoney, fmtRelative, formatOrdersSummary, shareText, payLabel } from '../utils'
+import { IconBack, IconShare } from '../components/icons'
 
 function fmtTime(ts) {
   if (!ts) return ''
@@ -93,11 +93,72 @@ function PaidOrdersView({ orders, onBack, onOpen }) {
   )
 }
 
+function UnpaidOrdersView({ orders, onBack, onOpen }) {
+  const unpaid = orders
+    .filter((o) => !(o.paid ?? false) && o.paymentMethod !== 'unpaid')
+    .sort((a, b) => {
+      const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt)
+      const db = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt)
+      return db - da
+    })
+
+  const shareAll = () => {
+    if (unpaid.length === 0) return
+    shareText(formatOrdersSummary(unpaid), 'סיכום הזמנות ממתינות')
+  }
+
+  return (
+    <>
+      <div style={{ padding: '0 14px', marginBottom: 12 }} className="row">
+        <button className="btn btn-ghost" onClick={onBack}>
+          <IconBack /> חזרה
+        </button>
+        <div style={{ fontWeight: 800, fontSize: 17, marginRight: 8, flex: 1 }}>הזמנות ממתינות ({unpaid.length})</div>
+        {unpaid.length > 0 && (
+          <button className="btn btn-primary" onClick={shareAll}>
+            <IconShare /> שתף הכל
+          </button>
+        )}
+      </div>
+      {unpaid.length === 0 ? (
+        <div className="card">
+          <div className="empty">
+            <span className="empty-icon">✅</span>
+            <div className="empty-title">אין הזמנות ממתינות</div>
+            <div className="empty-sub">כל ההזמנות אושרו</div>
+          </div>
+        </div>
+      ) : (
+        <div className="list">
+          {unpaid.map((o) => (
+            <div key={o.id} className="list-row rise" onClick={() => onOpen(o.id)}>
+              <div className={`list-avatar ${o.paymentMethod === 'bit' ? 'blue' : 'violet'}`}>
+                {o.paymentMethod === 'bit' ? '📱' : '💳'}
+              </div>
+              <div className="list-main">
+                <div className="list-title">{o.customerName || 'בלי שם'}</div>
+                <div className="list-sub">{fmtRelative(o.createdAt)} · {payLabel(o.paymentMethod)}</div>
+              </div>
+              <div className="list-end">
+                <div className="list-price">{fmtMoney(o.total)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function Dashboard({ orders, products, onOpen, onLock }) {
   const [showPaid, setShowPaid] = useState(false)
+  const [showUnpaid, setShowUnpaid] = useState(false)
 
   if (showPaid) {
     return <PaidOrdersView orders={orders} onBack={() => setShowPaid(false)} onOpen={onOpen} />
+  }
+  if (showUnpaid) {
+    return <UnpaidOrdersView orders={orders} onBack={() => setShowUnpaid(false)} onOpen={onOpen} />
   }
 
   const allPaid = orders.filter((o) => o.paid ?? false)
@@ -134,7 +195,7 @@ export default function Dashboard({ orders, products, onOpen, onLock }) {
           <div className="stat-card-value">{allPaid.length}</div>
           <div className="stat-card-sub">הזמנות</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" onClick={() => setShowUnpaid(true)} style={{ cursor: 'pointer' }}>
           <div className="stat-card-label">ממתינות</div>
           <div className="stat-card-value">{allUnpaid.length}</div>
           <div className="stat-card-sub">ללא תשלום</div>

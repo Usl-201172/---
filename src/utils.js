@@ -3,6 +3,47 @@ export const fmtMoney = (n) => {
   return '₪' + Math.round(num * 100) / 100
 }
 
+export function formatOrderText(order) {
+  const lines = []
+  lines.push(`🛒 *הזמנה — ${order.customerName || 'בלי שם'}*`)
+  lines.push('')
+  for (const it of (order.items || [])) {
+    const qty = Number(it.qty) || 0
+    const price = Number(it.unitPrice) || 0
+    lines.push(`• ${it.name}  ×${qty}  ${fmtMoney(price)}`)
+  }
+  lines.push('')
+  lines.push(`💰 *סה"כ: ${fmtMoney(order.total)}*`)
+  if (order.notes) lines.push(`📝 ${order.notes}`)
+  return lines.join('\n')
+}
+
+export function formatOrdersSummary(orders) {
+  const lines = []
+  lines.push(`📋 *סיכום הזמנות (${orders.length})*`)
+  lines.push('')
+  let total = 0
+  for (const o of orders) {
+    const t = Number(o.total) || 0
+    total += t
+    lines.push(`• ${o.customerName || 'בלי שם'} — ${fmtMoney(t)}`)
+  }
+  lines.push('')
+  lines.push(`💰 *סה"כ: ${fmtMoney(total)}*`)
+  return lines.join('\n')
+}
+
+export async function shareText(text, title) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text })
+      return
+    } catch { /* user cancelled */ }
+  }
+  const encoded = encodeURIComponent(text)
+  window.open(`https://wa.me/?text=${encoded}`, '_blank')
+}
+
 export const fmtQty = (it) => {
   const q = Number(it.qty) || 0
   return q % 1 === 0 ? String(q) : String(Math.round(q * 1000) / 1000)
